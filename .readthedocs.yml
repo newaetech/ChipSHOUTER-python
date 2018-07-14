@@ -1,0 +1,11 @@
+# .readthedocs.yml
+
+build:
+  image: latest
+
+requirements_file: requirements.txt
+
+python:
+  version: 2.7
+  setup_py_install: false
+  pip_install: true

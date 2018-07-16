@@ -583,7 +583,6 @@ class BP_TOOL(Connection):
         Builds a command packet
         """
         packet = bytearray()
-        print 'Sending command!!'
         # All option fields are 0
         packet.append(0)
         packet.append(0)
@@ -973,9 +972,7 @@ class Protocol(BP_TOOL):
 
     def send_command(self, command):
         request = self.build_command_packet(command)
-        print 'Writing. ' + hexlify(request)
         self.s_write(request)
-        print 'Done.'
         time.sleep(.1)
         r = self.s_read()
         if len(r) <= BP_TOOL.OVERHEAD + 1:

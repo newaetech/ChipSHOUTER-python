@@ -824,7 +824,7 @@ class ChipSHOUTER(DisableNewAttr):
         dict['emode']               = self.emode
         dict['mute']                = self.mute
 
-        dict['absentTemp']          = self.absentTemp
+        dict['absent_temp']         = self.absent_temp
         dict['pat_enable']          = self.pat_enable
         dict['pat_wave']            = self.pat_wave
         dict['reset_config']        = self.reset_config

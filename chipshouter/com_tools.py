@@ -973,7 +973,7 @@ class Protocol(BP_TOOL):
     def send_command(self, command):
         request = self.build_command_packet(command)
         self.s_write(request)
-        time.sleep(.1)
+        time.sleep(.2)
         r = self.s_read()
         if len(r) <= BP_TOOL.OVERHEAD + 1:
             raise IOError('No response from shouter.') 
@@ -1045,7 +1045,7 @@ class Bin_API(Protocol):
         :returns (String): name of the board programmed at time of assembly. 
         """
         self.send_request([t_var_size_Options.BOARD_ID], BP_TOOL.REQUEST_VAR)
-        return self.config_var.options[t_var_size_Options.BOARD_ID]['value']
+        return str(self.config_var.options[t_var_size_Options.BOARD_ID]['value'])
 
     def get_id(self, timeout = 0):
         return self.get_board_id()
@@ -1111,9 +1111,6 @@ class Bin_API(Protocol):
     def get_pulse_width_measured(self, timeout = 0):
         return self.config_16.options[t_16_Bit_Options.MEASURED_PULSE_WIDTH]['value']
 
-    def set_boot_bits(self, timeout = 0):
-        print 'Not implemented'
-
     def get_arm_timeout(self, timeout = 0):
         """ Arm timeout 
         Because of safty reasons we will monitor the trigger when in the armed
@@ -1170,13 +1167,12 @@ class Bin_API(Protocol):
     def __set_8_bool(self, bit, value):
         # Get the bool
         request = self.send_request([t_8_Bit_Options.BOOLEAN_CONFIG_1], BP_TOOL.REQUEST_8)
-        print 'Requested'
         self.config_8.bools[bit]['value'] = value;
 #        pprint.pprint(self.config_8.bools)
         result = self.config_8.get_bools_array(self.config_8.bools, 8)
         send = self.config_8.get_bools_array(self.config_8.bools, 8)
         value = send[0]
-        print value
+#        print value
         packet = self.send_option_command([t_8_Bit_Options.BOOLEAN_CONFIG_1], BP_TOOL.REQUEST_8, [value])
 #        pprint.pprint(self.config_8.bools)
         return

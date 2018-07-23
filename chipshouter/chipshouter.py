@@ -296,6 +296,16 @@ class ChipSHOUTER(DisableNewAttr):
         """
         return self.__connected
 
+    def connect(self):
+        """ This will disconnect the connection from the ChipSHOUTER.
+
+        :returns: (bool):  Status of the connection, True if connected 
+                           successfully. False if not.
+
+        """
+
+        self.com_api.ctl_connect()
+
     def disconnect(self):
         """ This will disconnect the connection from the ChipSHOUTER.
 

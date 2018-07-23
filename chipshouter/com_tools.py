@@ -56,10 +56,11 @@ class Connection(object):
 
     def ctl_connect(self):
         self.s= serial.Serial(
-            timeout = .1, # 1 second timeout.
+            timeout = .01, # 1 second timeout.
             port = self.comport,
             baudrate=115200,
             parity=serial.PARITY_NONE,
+            stopbits=serial.STOPBITS_TWO,
             bytesize=serial.EIGHTBITS
         )
         self.s.flushInput()
@@ -68,7 +69,7 @@ class Connection(object):
     def ctl_disconnect(self):
         self.s.close()
 
-    def s_read(self):
+    def s_read(self, timeout = 1):
         """
         Read data from the serial interface.
 
@@ -77,8 +78,17 @@ class Connection(object):
         """
         if self.s.is_open:
             try:
-                data = self.s.read(300)
+                timeout = timeout * 100
+
                 b = bytearray()
+                self.s.timeout = 1
+                data = self.s.read(1)
+                if not len(data):
+                    print 'NOTHING AAAAAAAAAAAAAAAA'
+                    return b
+                b.extend(data)
+                self.s.timeout = .1
+                data = self.s.read(300)
                 b.extend(data)
                 # Call the callback function for processing
                 return b
@@ -588,11 +598,6 @@ class BP_TOOL(Connection):
         packet.append(0)
         packet.append(0)
         packet.append(command)
-        # Add the CRC.
-        crc = CRCCCITT(version = "1D0F").calculate(''.join(map(chr, packet)))
-        packet.append((htons(crc) & 0x00FF))
-        packet.append((htons(crc) & 0xFF00) >> 8)
-        packet = self.packet_stuff(packet)
         return packet
 
     def build_request(self, options, req_type):
@@ -609,12 +614,6 @@ class BP_TOOL(Connection):
         packet += bit_array
         packet.append(0)  # No Following packets
         packet.append(0) # Number of options to follow
-
-        # Add the CRC.
-        crc = CRCCCITT(version = "1D0F").calculate(''.join(map(chr, packet)))
-        packet.append((htons(crc) & 0x00FF))
-        packet.append((htons(crc) & 0xFF00) >> 8)
-        packet = self.packet_stuff(packet)
 
         return packet
 
@@ -665,11 +664,13 @@ class BP_TOOL(Connection):
         # Length of the bytes to follow
         packet.append(0)
 
+        return packet
+
+    def add_crc(self, packet):
         # Add the CRC.
         crc = CRCCCITT(version = "1D0F").calculate(''.join(map(chr, packet)))
         packet.append((htons(crc) & 0x00FF))
         packet.append((htons(crc) & 0xFF00) >> 8)
-        packet = self.packet_stuff(packet)
         return packet
 
     def build_set_option(self, options, req_type, values):
@@ -929,28 +930,148 @@ class Protocol(BP_TOOL):
         crc = CRCCCITT(version = "1D0F").calculate(''.join(map(chr, data)))
 
         if crc == 0:
+            if self.__is_nack(data[:-2]):
+                return False
             self.parse_protocol(data)
-#            self.display_options()
-            return
+            return True
+        return False
+
+    def get_received_packet(self,data):
+        '''
+        Get the received packet.
+
+        :param data:
+
+        :return : data packet if it is good, False if it is bad
+
+        '''
+        # Unpack the data.
+        data = self.packet_unstuff(data)
+#        self.show_protocol(data)
+        # Verify that the packet is good.
+        crc = CRCCCITT(version = "1D0F").calculate(''.join(map(chr, data)))
+
+        # Validate and return
+        if crc == 0:
+            if self.__is_nack(data[:-2]):
+                return False
+            return data
+        return False
+
+    def send_with_retries(self, data, retries = 5):
+        # Retry up to 5 times.
+        for retry in range(retries):
+#            request = self.build_request(options, req_type)
+#            print 'Requesting: ' + ' ' + hexlify(data)
+            self.s_write(data)
+            r = self.s_read()
+#            print 'Request resp: ' + ' ' + hexlify(r)
+
+            if len(r) == 0:
+                raise IOError('REQUEST No response from shouter.') 
+            
+            # Handle response will set the dict with proper values.
+            rval = self.get_received_packet(r)
+#            handled = self.handle_response(r)
+            if rval != False:
+                break
+#            print '\n\n\nTry again!!!\n\n\n'
+        return rval
+
+    def __interact_with_shouter(self, data):
+        '''
+
+        Ask the shouter for a response to the command
+        will retry up to 5 times
+
+        :Returns (bytearray): data that it has responded with.
+                              Empty array if nothing.
+
+        '''
+        data = self.add_crc(data)
+        data = self.packet_stuff(data)
+        # Add the CRC.
+        packet = bytearray()
+        packet.extend(data)
+
+        rval = self.send_with_retries(data)
+#        crc = CRCCCITT(version = "1D0F").calculate(''.join(map(chr, packet)))
+#        packet.append((htons(crc) & 0x00FF))
+#        packet.append((htons(crc) & 0xFF00) >> 8)
+#        packet = self.packet_stuff(packet)
+
+#        # Retry up to 5 times.
+#        for retry in range(5):
+##            request = self.build_request(options, req_type)
+#            print 'Requesting: ' + ' ' + hexlify(packet)
+#            self.s_write(data)
+#            r = self.s_read()
+#            print 'Request resp: ' + ' ' + hexlify(r)
+#
+#            if len(r) == 0:
+#                raise IOError('REQUEST No response from shouter.') 
+#            
+#            # Handle response will set the dict with proper values.
+#            rval = self.get_received_packet(r)
+##            handled = self.handle_response(r)
+#            if rval != False:
+#                break
+#            print '\n\n\nTry again!!!\n\n\n'
+        return rval
 
     def refresh(self):
         val = self.build_request_all()
-        self.s_write(val)
-        time.sleep(.2)
-        r = self.s_read()
-        self.handle_response(r)
+#        val = self.add_crc(val)
+#        val = self.packet_stuff(val)
+        r   = self.__interact_with_shouter(val)
+#        print 'Here ' + hexlify(r)
+        self.parse_protocol(r)
+#        self.__show_data(r)
 
-    def send_request(self, options, req_type):
-        request = self.build_request(options, req_type)
-        self.s_write(request)
-        time.sleep(.001)
-        r = self.s_read()
+    def __show_data(self, data, ask = True):
+        if ask:
+            print 'Requesting: ' + ' ' + hexlify(data)
+        print 'BP_TOOL.OVERHEAD) ' + str(BP_TOOL.OVERHEAD)
+        print '[BP_TOOL.UINT16S] ' + str(data[BP_TOOL.UINT16S])
+        print '[BP_TOOL.UINT8S]) ' + str(data[BP_TOOL.UINT8S])
+        print '[BP_TOOL.VARS     ' + str(data[BP_TOOL.VARS])
+        pass
 
-#        if len(r) == 0:
-#            raise IOError('No response from shouter.') 
-            
-        # Handle response will set the dict with proper values.
-        self.handle_response(r)
+    def __is_nack(self, data):
+        if len(data) == 4:
+            if data[0] == 0 and data[1] == 0 and data[2] == 0 and data[3] == 0xFF:
+                return True
+        return False
+
+    def get_option_from_shouter(self, options, req_type):
+
+        val = self.build_request(options, req_type)
+#        self.__show_data(val)
+#        val = self.add_crc(val)
+#        val = self.packet_stuff(val)
+        r   = self.__interact_with_shouter(val)
+
+#        request = self.build_request(options, req_type)
+#        r       = self.__interact_with_shouter(request)
+        self.parse_protocol(r)
+
+#        # Retry up to 5 times.
+#        for retry in range(5):
+#            request = self.build_request(options, req_type)
+#            print 'Requesting: ' + str(options) + ' ' + hexlify(request)
+#            self.s_write(request)
+#            r = self.s_read()
+#            print 'Request resp: ' + str(options) + ' ' + hexlify(r)
+#
+#            if len(r) == 0:
+#                raise IOError('REQUEST No response from shouter.') 
+#            
+#            # Handle response will set the dict with proper values.
+#            handled = self.handle_response(r)
+#            if handled == True:
+#                break
+#            print '\n\n\nTry again!!!\n\n\n'
+
 
         # Handle the returning of a list.
         if req_type == BP_TOOL.REQUEST_16:
@@ -970,10 +1091,10 @@ class Protocol(BP_TOOL):
             rval.append(updated_settings[x]['value'])
         return rval
 
-    def send_command(self, command):
+    def send_command_to_shouter(self, command):
         request = self.build_command_packet(command)
         self.s_write(request)
-        time.sleep(.2)
+#HERE        time.sleep(.2)
         r = self.s_read()
         if len(r) <= BP_TOOL.OVERHEAD + 1:
             raise IOError('No response from shouter.') 
@@ -981,10 +1102,10 @@ class Protocol(BP_TOOL):
         self.handle_response(r)
         return response
 
-    def send_option_command(self, options, req_type, values):
+    def set_option_on_shouter(self, options, req_type, values):
         request = self.build_set_option(options, req_type, values)
         self.s_write(request)
-        time.sleep(.1)
+#HERE        time.sleep(.1)
         r = self.s_read()
 #        if len(r) == 0:
 #            raise IOError('No response from shouter.') 
@@ -1018,33 +1139,33 @@ class Bin_API(Protocol):
         super(Bin_API, self).__init__(comport)
 
     def cmd_default_options(self, timeout = 0):
-        self.send_command(BP_TOOL.DEFAULT)
+        self.send_command_to_shouter(BP_TOOL.DEFAULT)
 
     def cmd_disarm(self, timeout = 0):
-        self.send_command(BP_TOOL.DISARM)
+        self.send_command_to_shouter(BP_TOOL.DISARM)
 
     def cmd_arm(self, timeout = 0):
-        self.send_command(BP_TOOL.ARM)
+        self.send_command_to_shouter(BP_TOOL.ARM)
     
     def cmd_pulse(self, timeout = 0):
-        self.send_command(BP_TOOL.PULSE)
+        self.send_command_to_shouter(BP_TOOL.PULSE)
 
     def cmd_clear_faults(self, timeout = 0):
-        self.send_command(BP_TOOL.CLEAR_FAULTS)
+        self.send_command_to_shouter(BP_TOOL.CLEAR_FAULTS)
 
     def cmd_clear_arm(self, timeout = 0):
-        self.send_command(BP_TOOL.CLEAR_FAULTS)
+        self.send_command_to_shouter(BP_TOOL.CLEAR_FAULTS)
         self.cmd_arm()
 
     def cmd_reset(self, timeout = 0):
-        self.send_command(BP_TOOL.RESET)
+        self.send_command_to_shouter(BP_TOOL.RESET)
 
     def get_board_id(self, timeout = 0):
         """ This will get the board id. 
 
         :returns (String): name of the board programmed at time of assembly. 
         """
-        self.send_request([t_var_size_Options.BOARD_ID], BP_TOOL.REQUEST_VAR)
+        self.get_option_from_shouter([t_var_size_Options.BOARD_ID], BP_TOOL.REQUEST_VAR)
         return str(self.config_var.options[t_var_size_Options.BOARD_ID]['value'])
 
     def get_id(self, timeout = 0):
@@ -1055,12 +1176,12 @@ class Bin_API(Protocol):
 
         :returns (String): string of the state.
         """
-        self.send_request([t_var_size_Options.CURRENT_STATE], BP_TOOL.REQUEST_VAR)
+        self.get_option_from_shouter([t_var_size_Options.CURRENT_STATE], BP_TOOL.REQUEST_VAR)
         rval = str(self.config_var.options[t_var_size_Options.CURRENT_STATE]['value'])
         return rval
 
     def get_trigger_safe(self, timeout = 0):
-        response = self.send_command(BP_TOOL.TRIGGER_SAFE)
+        response = self.send_command_to_shouter(BP_TOOL.TRIGGER_SAFE)
         if response == BP_TOOL.ACK:
             return True
         else:
@@ -1083,7 +1204,7 @@ class Bin_API(Protocol):
 
         :returns (list): List of fault names that exist currently
         """
-        request = self.send_request([t_16_Bit_Options.FAULT_ACTIVE], BP_TOOL.REQUEST_16)
+        request = self.get_option_from_shouter([t_16_Bit_Options.FAULT_ACTIVE], BP_TOOL.REQUEST_16)
         return self.__get_faults_list(self.config_16.faults_current)
 
     def get_faults_latched(self):
@@ -1091,21 +1212,21 @@ class Bin_API(Protocol):
 
         :returns (list): List of fault names that are latched.
         """
-        request = self.send_request([t_16_Bit_Options.FAULT_LATCHED], BP_TOOL.REQUEST_16)
+        request = self.get_option_from_shouter([t_16_Bit_Options.FAULT_LATCHED], BP_TOOL.REQUEST_16)
         return self.__get_faults_list(self.config_16.faults_latched)
 
     def get_temperature_mosfet(self, timeout = 0):
-        self.send_request([t_16_Bit_Options.TEMPERATURE_MOSFET], BP_TOOL.REQUEST_16)
+        self.get_option_from_shouter([t_16_Bit_Options.TEMPERATURE_MOSFET], BP_TOOL.REQUEST_16)
         return self.config_16.options[t_16_Bit_Options.TEMPERATURE_MOSFET]['value']
     def get_temperature_diode(self, timeout = 0):
-        self.send_request([t_16_Bit_Options.TEMPERATURE_DIODE], BP_TOOL.REQUEST_16)
+        self.get_option_from_shouter([t_16_Bit_Options.TEMPERATURE_DIODE], BP_TOOL.REQUEST_16)
         return self.config_16.options[t_16_Bit_Options.TEMPERATURE_DIODE]['value']
     def get_temperature_xformer(self, timeout = 0):
-        self.send_request([t_16_Bit_Options.TEMPERATURE_XFORMER], BP_TOOL.REQUEST_16)
+        self.get_option_from_shouter([t_16_Bit_Options.TEMPERATURE_XFORMER], BP_TOOL.REQUEST_16)
         return self.config_16.options[t_16_Bit_Options.TEMPERATURE_XFORMER]['value']
 
     def get_voltage_measured(self, timeout = 0):
-        self.send_request([t_16_Bit_Options.VOLTAGE_MEASURED], BP_TOOL.REQUEST_16)
+        self.get_option_from_shouter([t_16_Bit_Options.VOLTAGE_MEASURED], BP_TOOL.REQUEST_16)
         return self.config_16.options[t_16_Bit_Options.VOLTAGE_MEASURED]['value']
 
     def get_pulse_width_measured(self, timeout = 0):
@@ -1130,91 +1251,91 @@ class Bin_API(Protocol):
         :Returns (int): The arm timeout without triggering. 
 
         """
-        self.send_request([t_16_Bit_Options.ARM_TIMEOUT], BP_TOOL.REQUEST_16)
+        self.get_option_from_shouter([t_16_Bit_Options.ARM_TIMEOUT], BP_TOOL.REQUEST_16)
         return self.config_16.options[t_16_Bit_Options.ARM_TIMEOUT]['value']
 
     def set_arm_timeout(self, value, timeout = 0):
-        packet = self.send_option_command([t_16_Bit_Options.ARM_TIMEOUT], BP_TOOL.REQUEST_16, [value])
+        packet = self.set_option_on_shouter([t_16_Bit_Options.ARM_TIMEOUT], BP_TOOL.REQUEST_16, [value])
 
     def get_voltage(self, timeout = 0):
-        self.send_request([t_16_Bit_Options.VOLTAGE], BP_TOOL.REQUEST_16)
+        self.get_option_from_shouter([t_16_Bit_Options.VOLTAGE], BP_TOOL.REQUEST_16)
         return self.config_16.options[t_16_Bit_Options.VOLTAGE]['value']
 
     def set_voltage(self, value, timeout = 0):
-        packet = self.send_option_command([t_16_Bit_Options.VOLTAGE], BP_TOOL.REQUEST_16, [value])
+        packet = self.set_option_on_shouter([t_16_Bit_Options.VOLTAGE], BP_TOOL.REQUEST_16, [value])
 
     def get_pulse_width(self, timeout = 0):
-        self.send_request([t_16_Bit_Options.PULSE_WIDTH], BP_TOOL.REQUEST_16)
+        self.get_option_from_shouter([t_16_Bit_Options.PULSE_WIDTH], BP_TOOL.REQUEST_16)
         return self.config_16.options[t_16_Bit_Options.PULSE_WIDTH]['value']
 
     def set_pulse_width(self, value, timeout = 0):
-        packet = self.send_option_command([t_16_Bit_Options.PULSE_WIDTH], BP_TOOL.REQUEST_16, [value])
+        packet = self.set_option_on_shouter([t_16_Bit_Options.PULSE_WIDTH], BP_TOOL.REQUEST_16, [value])
 
     def get_pulse_repeat(self, timeout = 0):
-        self.send_request([t_16_Bit_Options.PULSE_REPEAT], BP_TOOL.REQUEST_16)
+        self.get_option_from_shouter([t_16_Bit_Options.PULSE_REPEAT], BP_TOOL.REQUEST_16)
         return self.config_16.options[t_16_Bit_Options.PULSE_REPEAT]['value']
 
     def set_pulse_repeat(self, value, timeout = 0):
-        packet = self.send_option_command([t_16_Bit_Options.PULSE_REPEAT], BP_TOOL.REQUEST_16, [value])
+        packet = self.set_option_on_shouter([t_16_Bit_Options.PULSE_REPEAT], BP_TOOL.REQUEST_16, [value])
 
     def get_pulse_deadtime(self, timeout = 0):
-        self.send_request([t_16_Bit_Options.PULSE_DEADTIME], BP_TOOL.REQUEST_16)
+        self.get_option_from_shouter([t_16_Bit_Options.PULSE_DEADTIME], BP_TOOL.REQUEST_16)
         return self.config_16.options[t_16_Bit_Options.PULSE_DEADTIME]['value']
 
     def set_pulse_deadtime(self, value, timeout = 0):
-        packet = self.send_option_command([t_16_Bit_Options.PULSE_DEADTIME], BP_TOOL.REQUEST_16, [value])
+        packet = self.set_option_on_shouter([t_16_Bit_Options.PULSE_DEADTIME], BP_TOOL.REQUEST_16, [value])
 
     def __set_8_bool(self, bit, value):
         # Get the bool
-        request = self.send_request([t_8_Bit_Options.BOOLEAN_CONFIG_1], BP_TOOL.REQUEST_8)
+        request = self.get_option_from_shouter([t_8_Bit_Options.BOOLEAN_CONFIG_1], BP_TOOL.REQUEST_8)
         self.config_8.bools[bit]['value'] = value;
 #        pprint.pprint(self.config_8.bools)
         result = self.config_8.get_bools_array(self.config_8.bools, 8)
         send = self.config_8.get_bools_array(self.config_8.bools, 8)
         value = send[0]
 #        print value
-        packet = self.send_option_command([t_8_Bit_Options.BOOLEAN_CONFIG_1], BP_TOOL.REQUEST_8, [value])
+        packet = self.set_option_on_shouter([t_8_Bit_Options.BOOLEAN_CONFIG_1], BP_TOOL.REQUEST_8, [value])
 #        pprint.pprint(self.config_8.bools)
         return
 
     def get_hwtrig_term(self, timeout = 0):
-        request = self.send_request([t_8_Bit_Options.BOOLEAN_CONFIG_1], BP_TOOL.REQUEST_8)
+        request = self.get_option_from_shouter([t_8_Bit_Options.BOOLEAN_CONFIG_1], BP_TOOL.REQUEST_8)
         return self.config_8.bools[t_8_Bit_Options.BIT_PROBE_TERMINATION]['value']
     def set_hwtrig_term(self, value, timeout = 0):
-        request = self.send_request([t_8_Bit_Options.BOOLEAN_CONFIG_1], BP_TOOL.REQUEST_8)
+        request = self.get_option_from_shouter([t_8_Bit_Options.BOOLEAN_CONFIG_1], BP_TOOL.REQUEST_8)
         self.__set_8_bool(t_8_Bit_Options.BIT_PROBE_TERMINATION, value)
     def get_hwtrig_mode(self, timeout = 0):
-        request = self.send_request([t_8_Bit_Options.BOOLEAN_CONFIG_1], BP_TOOL.REQUEST_8)
+        request = self.get_option_from_shouter([t_8_Bit_Options.BOOLEAN_CONFIG_1], BP_TOOL.REQUEST_8)
         return self.config_8.bools[t_8_Bit_Options.BIT_TMODE]['value']
     def set_hwtrig_mode(self, value, timeout = 0):
-        request = self.send_request([t_8_Bit_Options.BOOLEAN_CONFIG_1], BP_TOOL.REQUEST_8)
+        request = self.get_option_from_shouter([t_8_Bit_Options.BOOLEAN_CONFIG_1], BP_TOOL.REQUEST_8)
         self.__set_8_bool(t_8_Bit_Options.BIT_TMODE, value)
     def get_emode(self, timeout = 0):
-        request = self.send_request([t_8_Bit_Options.BOOLEAN_CONFIG_1], BP_TOOL.REQUEST_8)
+        request = self.get_option_from_shouter([t_8_Bit_Options.BOOLEAN_CONFIG_1], BP_TOOL.REQUEST_8)
         return self.config_8.bools[t_8_Bit_Options.BIT_EMODE]['value']
     def set_emode(self, value, timeout = 0):
-        request = self.send_request([t_8_Bit_Options.BOOLEAN_CONFIG_1], BP_TOOL.REQUEST_8)
+        request = self.get_option_from_shouter([t_8_Bit_Options.BOOLEAN_CONFIG_1], BP_TOOL.REQUEST_8)
         self.__set_8_bool(t_8_Bit_Options.BIT_EMODE, value)
     def get_mute(self, timeout = 0):
-        request = self.send_request([t_8_Bit_Options.BOOLEAN_CONFIG_1], BP_TOOL.REQUEST_8)
+        request = self.get_option_from_shouter([t_8_Bit_Options.BOOLEAN_CONFIG_1], BP_TOOL.REQUEST_8)
         return self.config_8.bools[t_8_Bit_Options.BIT_MUTE]['value']
     def set_mute(self, value, timeout = 0):
-        request = self.send_request([t_8_Bit_Options.BOOLEAN_CONFIG_1], BP_TOOL.REQUEST_8)
+        request = self.get_option_from_shouter([t_8_Bit_Options.BOOLEAN_CONFIG_1], BP_TOOL.REQUEST_8)
         self.__set_8_bool(t_8_Bit_Options.BIT_MUTE, value)
     def get_pat_enable(self, timeout = 0):
-        request = self.send_request([t_8_Bit_Options.BOOLEAN_CONFIG_1], BP_TOOL.REQUEST_8)
+        request = self.get_option_from_shouter([t_8_Bit_Options.BOOLEAN_CONFIG_1], BP_TOOL.REQUEST_8)
         return self.config_8.bools[t_8_Bit_Options.BIT_PATTERN_TRIGGER]['value']
     def set_pat_enable(self, value, timeout = 0):
-        request = self.send_request([t_8_Bit_Options.BOOLEAN_CONFIG_1], BP_TOOL.REQUEST_8)
+        request = self.get_option_from_shouter([t_8_Bit_Options.BOOLEAN_CONFIG_1], BP_TOOL.REQUEST_8)
         self.__set_8_bool(t_8_Bit_Options.BIT_PATTERN_TRIGGER, value)
 
 
     def get_absentTemp(self, timeout = 0):
-        self.send_request([t_8_Bit_Options.ABSENTTEMP], BP_TOOL.REQUEST_8)
+        self.get_option_from_shouter([t_8_Bit_Options.ABSENTTEMP], BP_TOOL.REQUEST_8)
         return self.config_8.options[t_8_Bit_Options.ABSENTTEMP]['value']
 
     def set_absentTemp(self, value, timeout = 0):
-        packet = self.send_option_command([t_8_Bit_Options.ABSENTTEMP], BP_TOOL.REQUEST_8, [value])
+        packet = self.set_option_on_shouter([t_8_Bit_Options.ABSENTTEMP], BP_TOOL.REQUEST_8, [value])
 
     def __request_pat_wave(self, r_number):
         """
@@ -1261,9 +1382,10 @@ class Bin_API(Protocol):
         packet.append((htons(crc) & 0xFF00) >> 8)
         packet = self.packet_stuff(packet)
         self.s_write(packet)
-        time.sleep(.2)
+        time.sleep(.02)
 
     def get_pat_wave(self, timeout = 0):
+        print 'Get wave'
         self.config_var.options[t_var_size_Options.PATTERN_WAVE]['value'] = ''
         self.__request_pat_wave(0)
         for x in range(100):
@@ -1271,6 +1393,7 @@ class Bin_API(Protocol):
             if len(r) == 0:
                 raise IOError('No reply')
             time.sleep(.02)
+            print str(x) + ' WAV rec = ' + hexlify(r)
             self.handle_response(r)
             if self.to_follow == 0:
                 break
@@ -1278,6 +1401,7 @@ class Bin_API(Protocol):
         return  self.config_var.options[t_var_size_Options.PATTERN_WAVE]['value']
 
     def set_pat_wave(self, value, timeout = 0):
+        print 'Set wave'
         wave = value
         bit_array = bytearray()
         bits_array_length = (len(wave)) / 8 + 1
@@ -1329,6 +1453,8 @@ class Bin_API(Protocol):
 
             time.sleep(.1)
             r = self.s_read()
+            print 'rec:' + hexlify(r)
+
             if len(r) == 0:
                 raise IOError('No reply')
             response = r[BP_TOOL.OVERHEAD + 1]
@@ -1347,28 +1473,28 @@ def main():
     print 'Testing'
 
 #    # --------------------------------------------------------------
-#    request = bp.send_request([t_8_Bit_Options.BOOLEAN_CONFIG_1], BP_TOOL.REQUEST_8)
+#    request = bp.get_option_from_shouter([t_8_Bit_Options.BOOLEAN_CONFIG_1], BP_TOOL.REQUEST_8)
 #    print 'And mute is: ' + str(bp.config_8.bools[t_8_Bit_Options.BIT_MUTE])
 #
 #    # --------------------------------------------------------------
-#    request = bp.send_request([t_8_Bit_Options.ABSENTTEMP], BP_TOOL.REQUEST_8)
+#    request = bp.get_option_from_shouter([t_8_Bit_Options.ABSENTTEMP], BP_TOOL.REQUEST_8)
 #    print 'And at is: ' + str(bp.config_8.options[t_8_Bit_Options.ABSENTTEMP])
 #
 #    # --------------------------------------------------------------
-#    request = bp.send_request([t_16_Bit_Options.VOLTAGE], BP_TOOL.REQUEST_16)
+#    request = bp.get_option_from_shouter([t_16_Bit_Options.VOLTAGE], BP_TOOL.REQUEST_16)
 #    print 'And voltage is: ' + str(bp.config_16.options[t_16_Bit_Options.VOLTAGE])
 #
-#    request = bp.send_request([t_16_Bit_Options.VOLTAGE_MEASURED], BP_TOOL.REQUEST_16)
+#    request = bp.get_option_from_shouter([t_16_Bit_Options.VOLTAGE_MEASURED], BP_TOOL.REQUEST_16)
 #    print 'And voltage measured is: ' + str(bp.config_16.options[t_16_Bit_Options.VOLTAGE_MEASURED])
 #
-#    request = bp.send_request([t_var_size_Options.BOARD_ID], BP_TOOL.REQUEST_VAR)
+#    request = bp.get_option_from_shouter([t_var_size_Options.BOARD_ID], BP_TOOL.REQUEST_VAR)
 #    print 'And board_id: ' + str(bp.config_var.options[t_var_size_Options.BOARD_ID])
 #
 #    option_request = [
 #        t_16_Bit_Options.VOLTAGE,
 #        t_16_Bit_Options.VOLTAGE_MEASURED,
 #    ]
-#    request = bp.send_request(option_request, BP_TOOL.REQUEST_16)
+#    request = bp.get_option_from_shouter(option_request, BP_TOOL.REQUEST_16)
 #    print request
 #
 #    print 'Testing Setting voltage'
@@ -1388,7 +1514,7 @@ def main():
 #    bp.set_voltage(234)
     bp.set_hwtrig_term(1)
 #    bp.set_hwtrig_term(1)
-#    send_packet = bp.send_option_command([t_16_Bit_Options.VOLTAGE], BP_TOOL.REQUEST_16)
+#    send_packet = bp.set_option_on_shouter([t_16_Bit_Options.VOLTAGE], BP_TOOL.REQUEST_16)
 #    send_packet = bp.build_set_option([t_16_Bit_Options.VOLTAGE], BP_TOOL.REQUEST_16)
 #    print 'Receiving: ' + hexlify(send_packet)
 #    send_packet = bp.build_set_option([t_8_Bit_Options.BOOLEAN_CONFIG_1], BP_TOOL.REQUEST_8 )

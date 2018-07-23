@@ -820,25 +820,8 @@ class Protocol(BP_TOOL):
         ]
         pass
 
-    def is_command(packet):
-        """
-        Checks if we got a packet return the command. 
-        If it is not a normal command return None.
-
-        :param packet (bytearray): Packet to parse
-
-        :returns : The command or None if not a command.
-        """
-        if packet[BP_TOOL.UINT16S] == 0 and packet[BP_TOOL.UNIT8] == 0 and packet[BP_TOOL.VARS] == 0:
-            if packet[5] in self.validcommands:
-                return packet[5]
-            else:
-                return
-        else:
-            return
-
     #---------------------------------------------------------------------------
-    def packet_unstuff(self, data):
+    def __packet_unstuff(self, data):
         """ remove the special characters for stuffing
         """
         unstuffed = bytearray()
@@ -860,7 +843,7 @@ class Protocol(BP_TOOL):
         return(unstuffed)
 
     #---------------------------------------------------------------------------
-    def packet_stuff(self, data):
+    def __packet_stuff(self, data):
         """ inserts the special characters for stuffing
         """
         stuffed = bytearray()
@@ -913,18 +896,7 @@ class Protocol(BP_TOOL):
         for x in values:
             self.config_var.set_value(x['option'], x['value'])
 
-    def handle_response(self, data):
-        data = self.packet_unstuff(data)
-        crc = CRCCCITT(version = "1D0F").calculate(''.join(map(chr, data)))
-
-        if crc == 0:
-            if self.__is_nack(data[:-2]):
-                return False
-            self.parse_protocol(data)
-            return True
-        return False
-
-    def get_received_packet(self,data):
+    def __get_received_packet(self,data):
         '''
         Get the received packet.
 
@@ -934,7 +906,7 @@ class Protocol(BP_TOOL):
 
         '''
         # Unpack the data.
-        data = self.packet_unstuff(data)
+        data = self.__packet_unstuff(data)
         # Verify that the packet is good.
         crc = CRCCCITT(version = "1D0F").calculate(''.join(map(chr, data)))
 
@@ -945,7 +917,7 @@ class Protocol(BP_TOOL):
             return data
         return False
 
-    def send_with_retries(self, data, retries = 5):
+    def __send_with_retries(self, data, retries = 5):
         # Retry up to 5 times.
         for retry in range(retries):
             self.s_write(data)
@@ -955,7 +927,7 @@ class Protocol(BP_TOOL):
                 raise IOError('No response from shouter.') 
             
             # Handle response will set the dict with proper values.
-            rval = self.get_received_packet(r)
+            rval = self.__get_received_packet(r)
             if rval != False:
                 return rval
         raise IOError('Max NACK reached!') 
@@ -971,12 +943,12 @@ class Protocol(BP_TOOL):
 
         '''
         data = self.add_crc(data)
-        data = self.packet_stuff(data)
+        data = self.__packet_stuff(data)
         # Add the CRC.
         packet = bytearray()
         packet.extend(data)
 
-        rval = self.send_with_retries(data)
+        rval = self.__send_with_retries(data)
         return rval
 
     def refresh(self):

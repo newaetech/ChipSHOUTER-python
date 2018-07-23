@@ -697,11 +697,6 @@ class BP_TOOL(Connection):
             else:
                 packet.append(x)
 
-        # Add the CRC.
-        crc = CRCCCITT(version = "1D0F").calculate(''.join(map(chr, packet)))
-        packet.append((htons(crc) & 0x00FF))
-        packet.append((htons(crc) & 0xFF00) >> 8)
-        packet = self.packet_stuff(packet)
         return packet
 
     def __show_protocol__(self, data):
@@ -885,6 +880,8 @@ class Protocol(BP_TOOL):
     # vars bits
     def parse_protocol(self, data):
         start = self.get_follow_and_length(data)
+        if start == 0:
+            return
         end   = start + BP_TOOL.SIZE_FOLLOW + BP_TOOL.SIZE_LEN
         self.to_follow = data[BP_TOOL.OVERHEAD + data[BP_TOOL.UINT16S] + data[BP_TOOL.UINT8S] + data[BP_TOOL.VARS]]
         
@@ -942,6 +939,7 @@ class Protocol(BP_TOOL):
         data = self.packet_unstuff(data)
         # Verify that the packet is good.
         crc = CRCCCITT(version = "1D0F").calculate(''.join(map(chr, data)))
+        print 'Packet::: ' + hexlify(data)
 
         # Validate and return
         if crc == 0:
@@ -953,17 +951,18 @@ class Protocol(BP_TOOL):
     def send_with_retries(self, data, retries = 5):
         # Retry up to 5 times.
         for retry in range(retries):
+            print 'Trying ' + str(retry) + ' : ' + hexlify(data)
             self.s_write(data)
             r = self.s_read()
 
             if len(r) == 0:
-                raise IOError('REQUEST No response from shouter.') 
+                raise IOError('No response from shouter.') 
             
             # Handle response will set the dict with proper values.
             rval = self.get_received_packet(r)
             if rval != False:
-                break
-        return rval
+                return rval
+        raise IOError('Max NACK reached!') 
 
     def __interact_with_shouter(self, data):
         '''
@@ -1029,20 +1028,24 @@ class Protocol(BP_TOOL):
         return rval
 
     def send_command_to_shouter(self, command):
-        request = self.build_command_packet(command)
-        self.s_write(request)
-        r = self.s_read()
-        if len(r) <= BP_TOOL.OVERHEAD + 1:
-            raise IOError('No response from shouter.') 
+        val = self.build_command_packet(command)
+        r   = self.__interact_with_shouter(val)
+        print 'Command response' 
         response = r[BP_TOOL.OVERHEAD + 1]
-        self.handle_response(r)
+
+#        self.s_write(request)
+#        r = self.s_read()
+#        if len(r) <= BP_TOOL.OVERHEAD + 1:
+#            raise IOError('No response from shouter.') 
+#        response = r[BP_TOOL.OVERHEAD + 1]
+#        self.handle_response(r)
+#        print hexlify(r)
         return response
 
     def set_option_on_shouter(self, options, req_type, values):
-        request = self.build_set_option(options, req_type, values)
-        self.s_write(request)
-        r = self.s_read()
-        self.handle_response(r)
+        val = self.build_set_option(options, req_type, values)
+        r   = self.__interact_with_shouter(val)
+        self.parse_protocol(r)
         return r
 
 class Bin_API(Protocol):

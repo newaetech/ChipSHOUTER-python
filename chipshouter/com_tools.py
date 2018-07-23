@@ -431,7 +431,6 @@ class t_var_size_Options(Option_group):
             return
         if(item == t_var_size_Options.PATTERN_WAVE):
             bits  = value[0]
-#            print 'Got Bits: ' + str(bits)
             value = value[1:]
 
 
@@ -440,7 +439,6 @@ class t_var_size_Options(Option_group):
             for x in value:
                 for y in range(8):
                     if count >= bits:
-#                        pprint.pprint(self.options)
                         return
                     if x & (0x80 >> y):
                         self.options[t_var_size_Options.PATTERN_WAVE]['value'] += '1'
@@ -448,7 +446,6 @@ class t_var_size_Options(Option_group):
                         self.options[t_var_size_Options.PATTERN_WAVE]['value'] += '0'
                     count += 1
 
-#            print 'Got pattern_wave ' + str(len(value))
             print hexlify(value)
         else:
             super(t_var_size_Options, self).set_value(item, value)
@@ -707,7 +704,7 @@ class BP_TOOL(Connection):
         packet = self.packet_stuff(packet)
         return packet
 
-    def show_protocol(self, data):
+    def __show_protocol__(self, data):
         """
 
         Show the protocol that was received.
@@ -893,10 +890,7 @@ class Protocol(BP_TOOL):
         
         # Is it a command ??
         if data[BP_TOOL.UINT16S] == 0  and data[BP_TOOL.UINT8S] == 0 and data[BP_TOOL.VARS] == 0:
-#            print 'Got a command response of: ' + hexlify(data)
             return
-#        else:
-#            print 'Got another response of: ' + hexlify(data)
 
         bits = self.get_16bit_options_bits(data)
         values = self.get_16bit_options(data)
@@ -926,7 +920,6 @@ class Protocol(BP_TOOL):
 
     def handle_response(self, data):
         data = self.packet_unstuff(data)
-#        self.show_protocol(data)
         crc = CRCCCITT(version = "1D0F").calculate(''.join(map(chr, data)))
 
         if crc == 0:
@@ -947,7 +940,6 @@ class Protocol(BP_TOOL):
         '''
         # Unpack the data.
         data = self.packet_unstuff(data)
-#        self.show_protocol(data)
         # Verify that the packet is good.
         crc = CRCCCITT(version = "1D0F").calculate(''.join(map(chr, data)))
 
@@ -961,21 +953,16 @@ class Protocol(BP_TOOL):
     def send_with_retries(self, data, retries = 5):
         # Retry up to 5 times.
         for retry in range(retries):
-#            request = self.build_request(options, req_type)
-#            print 'Requesting: ' + ' ' + hexlify(data)
             self.s_write(data)
             r = self.s_read()
-#            print 'Request resp: ' + ' ' + hexlify(r)
 
             if len(r) == 0:
                 raise IOError('REQUEST No response from shouter.') 
             
             # Handle response will set the dict with proper values.
             rval = self.get_received_packet(r)
-#            handled = self.handle_response(r)
             if rval != False:
                 break
-#            print '\n\n\nTry again!!!\n\n\n'
         return rval
 
     def __interact_with_shouter(self, data):
@@ -995,38 +982,12 @@ class Protocol(BP_TOOL):
         packet.extend(data)
 
         rval = self.send_with_retries(data)
-#        crc = CRCCCITT(version = "1D0F").calculate(''.join(map(chr, packet)))
-#        packet.append((htons(crc) & 0x00FF))
-#        packet.append((htons(crc) & 0xFF00) >> 8)
-#        packet = self.packet_stuff(packet)
-
-#        # Retry up to 5 times.
-#        for retry in range(5):
-##            request = self.build_request(options, req_type)
-#            print 'Requesting: ' + ' ' + hexlify(packet)
-#            self.s_write(data)
-#            r = self.s_read()
-#            print 'Request resp: ' + ' ' + hexlify(r)
-#
-#            if len(r) == 0:
-#                raise IOError('REQUEST No response from shouter.') 
-#            
-#            # Handle response will set the dict with proper values.
-#            rval = self.get_received_packet(r)
-##            handled = self.handle_response(r)
-#            if rval != False:
-#                break
-#            print '\n\n\nTry again!!!\n\n\n'
         return rval
 
     def refresh(self):
         val = self.build_request_all()
-#        val = self.add_crc(val)
-#        val = self.packet_stuff(val)
         r   = self.__interact_with_shouter(val)
-#        print 'Here ' + hexlify(r)
         self.parse_protocol(r)
-#        self.__show_data(r)
 
     def __show_data(self, data, ask = True):
         if ask:
@@ -1046,32 +1007,8 @@ class Protocol(BP_TOOL):
     def get_option_from_shouter(self, options, req_type):
 
         val = self.build_request(options, req_type)
-#        self.__show_data(val)
-#        val = self.add_crc(val)
-#        val = self.packet_stuff(val)
         r   = self.__interact_with_shouter(val)
-
-#        request = self.build_request(options, req_type)
-#        r       = self.__interact_with_shouter(request)
         self.parse_protocol(r)
-
-#        # Retry up to 5 times.
-#        for retry in range(5):
-#            request = self.build_request(options, req_type)
-#            print 'Requesting: ' + str(options) + ' ' + hexlify(request)
-#            self.s_write(request)
-#            r = self.s_read()
-#            print 'Request resp: ' + str(options) + ' ' + hexlify(r)
-#
-#            if len(r) == 0:
-#                raise IOError('REQUEST No response from shouter.') 
-#            
-#            # Handle response will set the dict with proper values.
-#            handled = self.handle_response(r)
-#            if handled == True:
-#                break
-#            print '\n\n\nTry again!!!\n\n\n'
-
 
         # Handle the returning of a list.
         if req_type == BP_TOOL.REQUEST_16:
@@ -1094,7 +1031,6 @@ class Protocol(BP_TOOL):
     def send_command_to_shouter(self, command):
         request = self.build_command_packet(command)
         self.s_write(request)
-#HERE        time.sleep(.2)
         r = self.s_read()
         if len(r) <= BP_TOOL.OVERHEAD + 1:
             raise IOError('No response from shouter.') 
@@ -1105,10 +1041,7 @@ class Protocol(BP_TOOL):
     def set_option_on_shouter(self, options, req_type, values):
         request = self.build_set_option(options, req_type, values)
         self.s_write(request)
-#HERE        time.sleep(.1)
         r = self.s_read()
-#        if len(r) == 0:
-#            raise IOError('No response from shouter.') 
         self.handle_response(r)
         return r
 
@@ -1289,13 +1222,10 @@ class Bin_API(Protocol):
         # Get the bool
         request = self.get_option_from_shouter([t_8_Bit_Options.BOOLEAN_CONFIG_1], BP_TOOL.REQUEST_8)
         self.config_8.bools[bit]['value'] = value;
-#        pprint.pprint(self.config_8.bools)
         result = self.config_8.get_bools_array(self.config_8.bools, 8)
         send = self.config_8.get_bools_array(self.config_8.bools, 8)
         value = send[0]
-#        print value
         packet = self.set_option_on_shouter([t_8_Bit_Options.BOOLEAN_CONFIG_1], BP_TOOL.REQUEST_8, [value])
-#        pprint.pprint(self.config_8.bools)
         return
 
     def get_hwtrig_term(self, timeout = 0):
@@ -1472,53 +1402,7 @@ def main():
     bp = Bin_API('COM10')
     print 'Testing'
 
-#    # --------------------------------------------------------------
-#    request = bp.get_option_from_shouter([t_8_Bit_Options.BOOLEAN_CONFIG_1], BP_TOOL.REQUEST_8)
-#    print 'And mute is: ' + str(bp.config_8.bools[t_8_Bit_Options.BIT_MUTE])
-#
-#    # --------------------------------------------------------------
-#    request = bp.get_option_from_shouter([t_8_Bit_Options.ABSENTTEMP], BP_TOOL.REQUEST_8)
-#    print 'And at is: ' + str(bp.config_8.options[t_8_Bit_Options.ABSENTTEMP])
-#
-#    # --------------------------------------------------------------
-#    request = bp.get_option_from_shouter([t_16_Bit_Options.VOLTAGE], BP_TOOL.REQUEST_16)
-#    print 'And voltage is: ' + str(bp.config_16.options[t_16_Bit_Options.VOLTAGE])
-#
-#    request = bp.get_option_from_shouter([t_16_Bit_Options.VOLTAGE_MEASURED], BP_TOOL.REQUEST_16)
-#    print 'And voltage measured is: ' + str(bp.config_16.options[t_16_Bit_Options.VOLTAGE_MEASURED])
-#
-#    request = bp.get_option_from_shouter([t_var_size_Options.BOARD_ID], BP_TOOL.REQUEST_VAR)
-#    print 'And board_id: ' + str(bp.config_var.options[t_var_size_Options.BOARD_ID])
-#
-#    option_request = [
-#        t_16_Bit_Options.VOLTAGE,
-#        t_16_Bit_Options.VOLTAGE_MEASURED,
-#    ]
-#    request = bp.get_option_from_shouter(option_request, BP_TOOL.REQUEST_16)
-#    print request
-#
-#    print 'Testing Setting voltage'
-#    print '-----------------------'
-#    print ''
-#
-##    print 'Test bool array:'
-##    result = bp.config_8.get_bools_array(bp.config_8.bools, 8)
-##    print hexlify(result)
-#
-#    options = [0,1,2,3,4,5,6,7,8]
-#    result = bp.set_options_requested(options)
-#    result = bp.set_options_requested(options)
-#    print 'Set options test'
-#    print hexlify(result)
-#
-#    bp.set_voltage(234)
     bp.set_hwtrig_term(1)
-#    bp.set_hwtrig_term(1)
-#    send_packet = bp.set_option_on_shouter([t_16_Bit_Options.VOLTAGE], BP_TOOL.REQUEST_16)
-#    send_packet = bp.build_set_option([t_16_Bit_Options.VOLTAGE], BP_TOOL.REQUEST_16)
-#    print 'Receiving: ' + hexlify(send_packet)
-#    send_packet = bp.build_set_option([t_8_Bit_Options.BOOLEAN_CONFIG_1], BP_TOOL.REQUEST_8 )
-#    print 'Sending: ' + hexlify(send_packet)
 
 
 ################################################################################

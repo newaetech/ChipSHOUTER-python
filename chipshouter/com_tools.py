@@ -78,16 +78,13 @@ class Connection(object):
         """
         if self.s.is_open:
             try:
-                timeout = timeout * 100
-
                 b = bytearray()
                 self.s.timeout = 1
                 data = self.s.read(1)
                 if not len(data):
-                    print 'NOTHING AAAAAAAAAAAAAAAA'
                     return b
                 b.extend(data)
-                self.s.timeout = .1
+                self.s.timeout = .04
                 data = self.s.read(300)
                 b.extend(data)
                 # Call the callback function for processing
@@ -105,6 +102,7 @@ class Connection(object):
         self.s.flushInput()
         self.s.flushOutput()
 
+#        print 'WRITE: ' + hexlify(data) 
         if self.s.is_open:
             try:
                 self.s.write(data)
@@ -950,7 +948,6 @@ class Protocol(BP_TOOL):
     def send_with_retries(self, data, retries = 5):
         # Retry up to 5 times.
         for retry in range(retries):
-            print 'Trying ' + str(retry) + ' : ' + hexlify(data)
             self.s_write(data)
             r = self.s_read()
 
@@ -1029,16 +1026,8 @@ class Protocol(BP_TOOL):
     def send_command_to_shouter(self, command):
         val = self.build_command_packet(command)
         r   = self.interact_with_shouter(val)
-        print 'Command response' 
         response = r[BP_TOOL.OVERHEAD + 1]
 
-#        self.s_write(request)
-#        r = self.s_read()
-#        if len(r) <= BP_TOOL.OVERHEAD + 1:
-#            raise IOError('No response from shouter.') 
-#        response = r[BP_TOOL.OVERHEAD + 1]
-#        self.handle_response(r)
-#        print hexlify(r)
         return response
 
     def set_option_on_shouter(self, options, req_type, values):
@@ -1193,12 +1182,10 @@ class Bin_API(Protocol):
         packet = self.set_option_on_shouter([t_16_Bit_Options.ARM_TIMEOUT], BP_TOOL.REQUEST_16, [value])
 
     def get_voltage(self, timeout = 0):
-        print 'Get voltage'
         self.get_option_from_shouter([t_16_Bit_Options.VOLTAGE], BP_TOOL.REQUEST_16)
         return self.config_16.options[t_16_Bit_Options.VOLTAGE]['value']
 
     def set_voltage(self, value, timeout = 0):
-        print 'Set voltage ' + str(value)
         packet = self.set_option_on_shouter([t_16_Bit_Options.VOLTAGE], BP_TOOL.REQUEST_16, [value])
 
     def get_pulse_width(self, timeout = 0):
@@ -1314,16 +1301,7 @@ class Bin_API(Protocol):
             return rval
         return []
 
-#        # Add the CRC.
-#        crc = CRCCCITT(version = "1D0F").calculate(''.join(map(chr, packet)))
-#        packet.append((htons(crc) & 0x00FF))
-#        packet.append((htons(crc) & 0xFF00) >> 8)
-#        packet = self.packet_stuff(packet)
-#        self.s_write(packet)
-#        time.sleep(.02)
-
     def get_pat_wave(self, timeout = 0):
-        print 'Get wave'
         self.config_var.options[t_var_size_Options.PATTERN_WAVE]['value'] = ''
 
         count = 0
@@ -1333,25 +1311,12 @@ class Bin_API(Protocol):
         while more_to_follow:
             r = self.__request_pat_wave(self.to_follow)
             self.parse_protocol(r)
-            print str(count) + ' WAV rec = ' + hexlify(r)
             count += 1
             more_to_follow = self.to_follow
 
-#        self.__request_pat_wave(0)
-#        for x in range(100):
-#            r = self.s_read()
-#            if len(r) == 0:
-#                raise IOError('No reply')
-#            time.sleep(.02)
-#            print str(x) + ' WAV rec = ' + hexlify(r)
-#            self.handle_response(r)
-#            if self.to_follow == 0:
-#                break
-#            self.__request_pat_wave(self.to_follow)
         return  self.config_var.options[t_var_size_Options.PATTERN_WAVE]['value']
 
     def set_pat_wave(self, value, timeout = 0):
-        print '---- Set wave ----'
         wave = value
         bit_array = bytearray()
         bits_array_length = (len(wave)) / 8 + 1
@@ -1373,16 +1338,12 @@ class Bin_API(Protocol):
                 raise ValueError('Only \'1\' an \'0\' allowed')
             index += 1
 
-        print '-'*80
         for x in range(0, len(bit_array), max_bytes):
-            print '---- Packet #'+str(x)
-            print '--------> ' + str(len(bit_array)) + '<---------'
             send = bit_array[x:x + max_bytes]
             send_length = max_bytes * 8 
 
             if (((x / 2) + 1) * (max_bytes * 8)) > len(wave):
                 send_length = len(wave) % (max_bytes * 8) 
-            print '-----> SL = ' + str(send_length)
 
             packet = bytearray()
             packet.append(0) # 16 bit options
@@ -1403,7 +1364,6 @@ class Bin_API(Protocol):
             packet += send
 
             self.interact_with_shouter(packet)
-            print '-'*80
 
 ################################################################################
 def main():

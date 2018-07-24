@@ -1322,18 +1322,11 @@ class Bin_API(Protocol):
         for x in range(0, total_bytes, max_bytes_packet):
             send = bit_array[x:(x + max_bytes_packet)]
             send_bits_length = max_bits_packet
-#            print '-'*80
-#            print 'TB:           ' + str(total_bits)
-#            print 'max bits:     ' + str(max_bits_packet)
-#            print 'x:            ' + str(x)
-#            print 'bits:         ' + hexlify(bit_array)
-#            print 'bits remain:  ' + hexlify(bit_array[x:])
-#            print 'Packet:       ' + hexlify(send)
+
             if (((x / max_bytes_packet) + 1) * (max_bits_packet)) > len(wave):
                 send_bits_length = len(wave) % (max_bits_packet)
 
             total_bit_count += send_bits_length
-#            print 'Packet count send: ' + str(count) + ' ' + hexlify(send)
 
             packet = bytearray()
             packet.append(0) # 16 bit options
@@ -1354,7 +1347,6 @@ class Bin_API(Protocol):
             packet.append(send_bits_length)
             packet += send
 
-            print 'Finally = ' + str(send_bits_length) + ' : '+ hexlify(packet)
             self.interact_with_shouter(packet)
 
 ################################################################################

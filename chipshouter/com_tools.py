@@ -576,6 +576,7 @@ class BP_TOOL(Connection):
         rval = []
         for x in range(vars_requested):
             s = data[start + 2 : start + 2 + data[start + 1]]
+#            print 'PAT = ' + hexlify(s)
             opt = options[x]
             rval.append({'option' : opt, 'type': data[start], 'length' : data[start + 1], 'value' : s})
 #            pprint.pprint(rval)
@@ -1291,10 +1292,13 @@ class Bin_API(Protocol):
     def set_pat_wave(self, value, timeout = 0):
         wave = value
         bit_array = bytearray()
-        bits_array_length = (len(wave)) / 8 + 1
+        bits_array_length = (len(wave)) / 8
 
-        max_bytes = 12
-        max_bits  = (max_bytes * 8)
+        if len(wave) % 8:
+            bits_array_length += 1
+
+        max_bytes_packet = 12
+        max_bits_packet  = (max_bytes_packet * 8)
 
         for x in range(bits_array_length):
             bit_array.append(0)
@@ -1310,12 +1314,26 @@ class Bin_API(Protocol):
                 raise ValueError('Only \'1\' an \'0\' allowed')
             index += 1
 
-        for x in range(0, len(bit_array), max_bytes):
-            send = bit_array[x:x + max_bytes]
-            send_length = max_bytes * 8 
+        count = 0
+        total_bit_count = 0
+        total_bits      = len(wave)
+        total_bytes     = len(bit_array)
 
-            if (((x / 2) + 1) * (max_bytes * 8)) > len(wave):
-                send_length = len(wave) % (max_bytes * 8) 
+        for x in range(0, total_bytes, max_bytes_packet):
+            send = bit_array[x:(x + max_bytes_packet)]
+            send_bits_length = max_bits_packet
+#            print '-'*80
+#            print 'TB:           ' + str(total_bits)
+#            print 'max bits:     ' + str(max_bits_packet)
+#            print 'x:            ' + str(x)
+#            print 'bits:         ' + hexlify(bit_array)
+#            print 'bits remain:  ' + hexlify(bit_array[x:])
+#            print 'Packet:       ' + hexlify(send)
+            if (((x / max_bytes_packet) + 1) * (max_bits_packet)) > len(wave):
+                send_bits_length = len(wave) % (max_bits_packet)
+
+            total_bit_count += send_bits_length
+#            print 'Packet count send: ' + str(count) + ' ' + hexlify(send)
 
             packet = bytearray()
             packet.append(0) # 16 bit options
@@ -1324,17 +1342,19 @@ class Bin_API(Protocol):
 
             # ---------------------------------------------------------------------
             # Request the variable length options. pattern wave.
-            if x:
+            if count:
                 packet.append(0x01 << t_var_size_Options.PATTERN_WAVE_APPEND)
             else:
                 packet.append(0x01 << t_var_size_Options.PATTERN_WAVE)
+            count += 1
 
             # ---------------------------------------------------------------------
             # Packets to follow
             packet.append(0)
-            packet.append(send_length)
+            packet.append(send_bits_length)
             packet += send
 
+            print 'Finally = ' + str(send_bits_length) + ' : '+ hexlify(packet)
             self.interact_with_shouter(packet)
 
 ################################################################################

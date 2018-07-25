@@ -542,7 +542,7 @@ class ChipSHOUTER(DisableNewAttr):
             return False
 
     @property
-    def version(self):
+    def api_version(self):
         """
         This is the control of the armed status.
 
@@ -834,7 +834,7 @@ class ChipSHOUTER(DisableNewAttr):
 
     def _dict_repr(self):
         dict = OrderedDict()
-        dict['api_version']         = self.version
+        dict['api_version']         = self.api_version
         dict['armed']               = self.armed
         dict['voltage']             = self.voltage._dict_repr()
         dict['pulse']               = self.pulse._dict_repr()

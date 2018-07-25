@@ -66,6 +66,9 @@
 from collections import OrderedDict
 from com_tools import Bin_API
 
+
+api_version = '0.0.0'
+
 class DisableNewAttr(object):
     """Provides an ability to disable setting new attributes in a class, useful to prevent typos.
 
@@ -538,6 +541,19 @@ class ChipSHOUTER(DisableNewAttr):
         else:
             return False
 
+    @property
+    def version(self):
+        """
+        This is the control of the armed status.
+
+        :Returns (bool): - When read it will show True when armed, False if not. 
+
+        :param state (bool): Attempt to arm when True is passed in.
+                             Attempt to disarm when False is passed in.
+
+        """
+        return api_version;
+
     @clr_armed.setter
     def clr_armed(self, status):
         if status:
@@ -818,6 +834,7 @@ class ChipSHOUTER(DisableNewAttr):
 
     def _dict_repr(self):
         dict = OrderedDict()
+        dict['api_version']         = self.version
         dict['armed']               = self.armed
         dict['voltage']             = self.voltage._dict_repr()
         dict['pulse']               = self.pulse._dict_repr()
@@ -861,23 +878,25 @@ def main():
     print cs.status()
     print cs.voltage
     print 'Arming!'
+    cs.mute = False
     cs.armed = True
     print cs.voltage.set
     print cs.voltage.measured
-    cs.armed = False 
+    time.sleep(1)
 
-#    if cs.status():
-#        print cs.voltage
-#        print '-'*40
-#        print cs.voltage.set
-#        print cs.voltage.measured
-#
-#        cs.voltage.set = 205
-#        print 'And... ' + str(cs.voltage)
-#        cs.voltage = 206
-#        print cs.voltage.set
-#        print cs.voltage
-#    time.sleep(1)
+    if cs.status():
+        print cs.voltage
+        print '-'*40
+        print cs.voltage.set
+        print cs.voltage.measured
+
+        cs.voltage.set = 205
+        print 'And... ' + str(cs.voltage)
+        cs.voltage = 206
+        print cs.voltage.set
+        print cs.voltage
+    cs.armed = False 
+    time.sleep(1)
     cs.disconnect()
 
 ################################################################################

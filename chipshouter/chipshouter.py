@@ -855,7 +855,7 @@ class ChipSHOUTER(DisableNewAttr):
     @property
     def reset(self):
         """Set to True causes a hardware reset."""
-        return 0
+        return self.com_api.get_is_reset()
     @reset.setter
     def reset(self, value):
         if value:
@@ -896,6 +896,7 @@ class ChipSHOUTER(DisableNewAttr):
         dict['voltage']             = self.voltage._dict_repr()
         dict['pulse']               = self.pulse._dict_repr()
         dict['state']               = self.state
+        dict['trigger_safe']        = self.trigger_safe
         dict['faults_current']      = self.faults_current
         dict['faults_latched']      = self.faults_latched
         dict['temperature_mosfet']  = self.temperature_mosfet

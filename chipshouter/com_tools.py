@@ -50,6 +50,8 @@ import pprint
 import time
 
 class Connection(object):
+    START_UP_STRING = 'ChipShouter by NewAE Technology Inc.'
+
     def __init__(self, comport):
         self.comport = comport
         self.ctl_connect()
@@ -77,20 +79,30 @@ class Connection(object):
 
         """
         if self.s.is_open:
+            data = [] 
+            b    = bytearray()
             try:
-                b = bytearray()
-                self.s.timeout = 1
+                self.s.timeout = 3
                 data = self.s.read(1)
+                
                 if not len(data):
                     return b
-                b.extend(data)
+
                 self.s.timeout = .04
-                data = self.s.read(300)
-                b.extend(data)
-                # Call the callback function for processing
+                data += self.s.read(500)
+            except Exception as e:
+                print("Could not read from port" + str(e))
+
+            if Connection.START_UP_STRING in data:
+                raise IOError('Shouter has reset') 
+
+            start = data.find('\x7e')
+            end   = data.find('\x7f')
+            if start < 0 or end < 0 or end < start:
+                b = bytearray()
                 return b
-            except:
-                print("Could not read from port")
+            b.extend(data[start:end])
+            return b
         else:
             raise IOError('Comport is not open, use ctl_connect()')
 
@@ -102,7 +114,6 @@ class Connection(object):
         self.s.flushInput()
         self.s.flushOutput()
 
-#        print 'WRITE: ' + hexlify(data) 
         if self.s.is_open:
             try:
                 self.s.write(data)
@@ -446,24 +457,23 @@ class t_var_size_Options(Option_group):
                         self.options[t_var_size_Options.PATTERN_WAVE]['value'] += '0'
                     count += 1
 
-            print hexlify(value)
+#            print hexlify(value)
         else:
             super(t_var_size_Options, self).set_value(item, value)
 
 
 class BP_TOOL(Connection):
-    UINT16S     = 0   # Number of bytes to represent the uint16's
-    UINT8S      = 1   # Number of bytes to represent the uint8's
-    VARS        = 2   # Number of bytes to represent the variables lenth's
-    MAX         = 3
-    OVERHEAD    = 3   # UINT16S + UINT8S + VARS
-    SIZE_FOLLOW = 1   # UINT16S + UINT8S + VARS
-    SIZE_LEN    = 1   # UINT16S + UINT8S + VARS
-
-    REQUEST_16  = 0
-    REQUEST_8   = 1
-    REQUEST_VAR = 2
-    SHOUTER_CMD = 3
+    UINT16S        = 0   # Number of bytes to represent the uint16's
+    UINT8S         = 1   # Number of bytes to represent the uint8's
+    VARS           = 2   # Number of bytes to represent the variables lenth's
+    MAX            = 3
+    OVERHEAD       = 3   # UINT16S + UINT8S + VARS
+    SIZE_FOLLOW    = 1   # UINT16S + UINT8S + VARS
+    SIZE_LEN       = 1   # UINT16S + UINT8S + VARS
+    REQUEST_16     = 0
+    REQUEST_8      = 1
+    REQUEST_VAR    = 2
+    SHOUTER_CMD    = 3
 
     # Commands
     DISARM       = 0
@@ -473,6 +483,7 @@ class BP_TOOL(Connection):
     CLEAR_FAULTS = 4
     PULSE        = 5
     TRIGGER_SAFE = 6
+    IS_RESET     = 7
     TIMEOUT      = 0xfc
     ACK          = 0x15 
     NACK         = 0xff 
@@ -928,6 +939,7 @@ class Protocol(BP_TOOL):
 
             if len(r) == 0:
                 raise IOError('No response from shouter.') 
+
             
             # Handle response will set the dict with proper values.
             rval = self.__get_received_packet(r)
@@ -1001,8 +1013,7 @@ class Protocol(BP_TOOL):
     def send_command_to_shouter(self, command):
         val = self.build_command_packet(command)
         r   = self.interact_with_shouter(val)
-        response = r[BP_TOOL.OVERHEAD + 1]
-
+        response = r[BP_TOOL.OVERHEAD]
         return response
 
     def set_option_on_shouter(self, options, req_type, values):
@@ -1078,6 +1089,20 @@ class Bin_API(Protocol):
         self.get_option_from_shouter([t_var_size_Options.CURRENT_STATE], BP_TOOL.REQUEST_VAR)
         rval = str(self.config_var.options[t_var_size_Options.CURRENT_STATE]['value'])
         return rval
+
+    def get_is_reset(self, timeout = 0):
+        """ This will ask if the shouter has reset or not. 
+
+        :returns (bool): True if the shouter has reset.
+
+        """
+        response = self.send_command_to_shouter(BP_TOOL.IS_RESET)
+        if response == BP_TOOL.ACK:
+            return  False
+        elif response == BP_TOOL.IS_RESET:
+            return True
+        else:
+            return False
 
     def get_trigger_safe(self, timeout = 0):
         response = self.send_command_to_shouter(BP_TOOL.TRIGGER_SAFE)

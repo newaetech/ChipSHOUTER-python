@@ -213,7 +213,8 @@ class t_16_Bit_Options(Option_group):
     TEMPERATURE_XFORMER        = 9
     TEMPERATURE_DIODE          = 10
     MEASURED_PULSE_WIDTH       = 11
-    MAX                        = 12
+    PAT_WAVE_LENGTH            = 12
+    MAX                        = 13
 
     BIT_FAULT_PROBE            = 0
     BIT_FAULT_OVERTEMP         = 1
@@ -245,7 +246,8 @@ class t_16_Bit_Options(Option_group):
             t_16_Bit_Options.TEMPERATURE_MOSFET   : {'value' : 0, 'name' : 'temperature_mosfet'   },
             t_16_Bit_Options.TEMPERATURE_XFORMER  : {'value' : 0, 'name' : 'temperature_xformer'  },
             t_16_Bit_Options.TEMPERATURE_DIODE    : {'value' : 0, 'name' : 'temperature_diode'    },
-            t_16_Bit_Options.MEASURED_PULSE_WIDTH : {'value' : 0, 'name' : 'pulse_width_measured' }
+            t_16_Bit_Options.MEASURED_PULSE_WIDTH : {'value' : 0, 'name' : 'pulse_width_measured' },
+            t_16_Bit_Options.PAT_WAVE_LENGTH      : {'value' : 0, 'name' : 'pat_wave_length'      }
         }
         self.faults_current = {
             t_16_Bit_Options.BIT_FAULT_PROBE             : {'value' : 0, 'name' :  'fault_probe'          },
@@ -1216,6 +1218,9 @@ class Bin_API(Protocol):
     def set_mute(self, value, timeout = 0):
         request = self.get_option_from_shouter([t_8_Bit_Options.BOOLEAN_CONFIG_1], BP_TOOL.REQUEST_8)
         self.__set_8_bool(t_8_Bit_Options.BIT_MUTE, value)
+    def get_pat_length(self, timeout = 0):
+        request = self.get_option_from_shouter([t_16_Bit_Options.PAT_WAVE_LENGTH], BP_TOOL.REQUEST_16)
+        return self.config_16.options[t_16_Bit_Options.PAT_WAVE_LENGTH]['value']
     def get_pat_enable(self, timeout = 0):
         request = self.get_option_from_shouter([t_8_Bit_Options.BOOLEAN_CONFIG_1], BP_TOOL.REQUEST_8)
         return self.config_8.bools[t_8_Bit_Options.BIT_PATTERN_TRIGGER]['value']
@@ -1274,9 +1279,11 @@ class Bin_API(Protocol):
             return rval
         return []
 
-    def get_pat_wave(self, timeout = 0):
+    def get_pat_wave(self, timeout = 0, short_wave = False):
         self.config_var.options[t_var_size_Options.PATTERN_WAVE]['value'] = ''
-
+        # Check the pat enable, it will also ensure that the count is reset
+        # on the shouter side.
+        pat_en = self.get_pat_enable()
         count = 0
         more_to_follow = 1
         self.to_follow = 0
@@ -1286,6 +1293,9 @@ class Bin_API(Protocol):
             self.parse_protocol(r)
             count += 1
             more_to_follow = self.to_follow
+
+            if short_wave:
+                break
 
         return  self.config_var.options[t_var_size_Options.PATTERN_WAVE]['value']
 

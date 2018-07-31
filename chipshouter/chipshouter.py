@@ -299,6 +299,14 @@ class ChipSHOUTER(DisableNewAttr):
         """
         return self.__connected
 
+    def get_pat_length(self):
+        """ This will get the length of the pattern wave programmed in the ChipSHOUTER firmware.
+
+        :returns:    (int):  The length of the programmed pattern wave in the ChipSHOUTER. 
+
+        """
+        return self.com_api.get_pat_length()
+
     def connect(self):
         """ This will disconnect the connection from the ChipSHOUTER.
 
@@ -769,12 +777,62 @@ class ChipSHOUTER(DisableNewAttr):
     @property
     def pat_wave(self):
         """The wave used for the pattern trigger when pat_enable is 'True'.
+
+        When reading the This will return the string up to 96 bits.
+
+        If the length is more than 96 bits the string will append '... ( 4904 more )'
+        >>> cs.pat_wave
+        '111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111 ... ( 4904 more )'
+         >>>
+
+        **NOTE**: To get pattern waves that are longer than 96 use the get_pat_wave function.
+
+        example:
+         >>> cs.pat_wave = '11001'
+         >>> cs.pat_wave
+         '11001'
+         >>> cs.pat_wave = '1'*97
+         >>> cs.pat_wave
+         '111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111 ... ( 1 more )'
+         >>> cs.get_pat_wave()
+         '1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111'
+         >>>
+
+        **NOTE**: You **MUST** end the pattern with an inactive value,
+        which will depend on the setting of hwtrig_mode . Normally
+        this means ensuring you end with a '0' or 'False'.
+        
+        For example, setting a pattern of 11100011110000::
+        
+            Pattern  1 1 1 0 0 0 1 1 1 1 0 0 0 0 
+                     _ _ _       _ _ _ _        
+            Trigger |     |_ _ _|       |_ _ _ _
+
+                    ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^
+                    | | | | | | | | | | | | | | |
+            Time:   20  60  00  40  80  20  60  
+             (nS)     40  80  20  60  00  40  80
+             
+        See the ChipSHOUTER manual specifications for details of the maximum
+        wave length and exact time-step size.             
+
+        """
+        length = self.com_api.get_pat_length()
+        if length > 96:
+            wave = self.com_api.get_pat_wave(short_wave = True)
+            wave += ' ... ( ' + str( length - 96) + ' more )'
+            return wave
+
+        return self.com_api.get_pat_wave()
+
+    def get_pat_wave(self):
+        """The wave used for the pattern trigger when pat_enable is 'True'.
         
         **NOTE**: You **MUST** end the pattern with an inactive value,
         which will depend on the setting of hwtrig_mode . Normally
         this means ensuring you end with a '0' or 'False'.
         
-        For example, setting a pattern of [1,1,1,0,0,0,1,1,1,1,0,0,0,0]::
+        For example, setting a pattern of '11100011110000'::
         
             Pattern  1 1 1 0 0 0 1 1 1 1 0 0 0 0 
                      _ _ _       _ _ _ _        
@@ -788,7 +846,6 @@ class ChipSHOUTER(DisableNewAttr):
         See the ChipSHOUTER manual specifications for details of the maximum
         wave length and exact time-step size.             
         """
-
         return self.com_api.get_pat_wave()
 
     @pat_wave.setter

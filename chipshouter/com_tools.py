@@ -1106,7 +1106,7 @@ class Bin_API(Protocol):
 
     def get_trigger_safe(self, timeout = 0):
         response = self.send_command_to_shouter(BP_TOOL.TRIGGER_SAFE)
-        if response == BP_TOOL.ACK:
+        if response == BP_TOOL.TRIGGER_SAFE:
             return True
         else:
             return False

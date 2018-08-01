@@ -65,7 +65,9 @@
 '''
 from collections import OrderedDict
 from com_tools import Bin_API
-
+from com_tools import Reset_Exception 
+from com_tools import Max_Retry_Exception 
+import time
 
 api_version = '0.0.0'
 
@@ -298,6 +300,20 @@ class ChipSHOUTER(DisableNewAttr):
 
         """
         return self.__connected
+
+    def ready_for_commands(self, retries = 3):
+        """
+        ready_for_commands is a function to wait for the firmware to be ready to communicate
+        """
+        return self.com_api.ready_for_commands()
+       
+    def wait_for_arm(self, timeout = 3):
+        while timeout:
+            timeout -= 1
+            if self.state == 'armed':
+                return True
+            time.sleep(1)
+        return False
 
     def get_pat_length(self):
         """ This will get the length of the pattern wave programmed in the ChipSHOUTER firmware.

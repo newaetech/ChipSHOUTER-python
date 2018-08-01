@@ -49,11 +49,27 @@ from _socket import htonl, htons
 import pprint
 import time
 
+class Firmware_State_Exception(Exception):
+    pass
+
+class Max_Retry_Exception(Exception):
+    pass
+
+class Reset_Exception(Exception):
+    pass
+
 class Connection(object):
     START_UP_STRING = 'ChipShouter by NewAE Technology Inc.'
 
-    def __init__(self, comport):
+    def __init__(self, comport, logging = False):
         self.comport = comport
+        self.log_input  = False 
+        self.log_output = False
+        self.log_ascii  = False
+        if logging == True:
+            self.log_input  = True 
+            self.log_output = True 
+            self.log_ascii  = True
         self.ctl_connect()
 
     def ctl_connect(self):
@@ -68,8 +84,13 @@ class Connection(object):
         self.s.flushInput()
         self.s.flushOutput()
 
+        self.logfile = open("log.txt", "w");
+        self.logfile.write("Start Logging\n")
+        self.logfile.write("-------------\n")
+
     def ctl_disconnect(self):
         self.s.close()
+        self.logfile.close()
 
     def s_read(self, timeout = 1):
         """
@@ -93,14 +114,33 @@ class Connection(object):
             except Exception as e:
                 print("Could not read from port" + str(e))
 
-            if Connection.START_UP_STRING in data:
-                raise IOError('Shouter has reset') 
-
             start = data.find('\x7e')
             end   = data.find('\x7f')
+
+            txt_start = ''
+            txt_end   = ''
+            if start < 0:
+                txt_start = data
+            elif end < 0:
+                txt_start = data
+            else:
+                txt_start = data[0:start]
+                txt_end   = data[end+1:]
+
+            txt = txt_start + txt_end
+            if len(txt):
+                if self.log_ascii:
+                    self.logfile.write(txt)
+
+            # End logging 
+            if Connection.START_UP_STRING in data:
+                raise Reset_Exception('Shouter has reset') 
+
             if start < 0 or end < 0 or end < start:
                 b = bytearray()
                 return b
+            if self.log_input:
+                self.logfile.write('\nIN :' + str(len(data)) + '[' + hexlify(data) + ']' + '\n')
             b.extend(data[start:end])
             return b
         else:
@@ -111,14 +151,15 @@ class Connection(object):
         Write data to the serial interface.
         Raises an IOError if not connected.
         """
-        self.s.flushInput()
         self.s.flushOutput()
 
         if self.s.is_open:
             try:
                 self.s.write(data)
-            except:
-                print("Could not write to port")
+                if self.log_output:
+                    self.logfile.write('\nIN :' + str(len(data)) + '[' + hexlify(data) + ']' + '\n')
+            except Exception as e:
+                print("Could not write to port " + str(e))
         else:
             raise IOError('Comport is not open, use ctl_connect()')
 
@@ -488,8 +529,8 @@ class BP_TOOL(Connection):
     ACK          = 0x15 
     NACK         = 0xff 
 
-    def __init__(self, comport):
-        super(BP_TOOL, self).__init__(comport)
+    def __init__(self, comport, logging):
+        super(BP_TOOL, self).__init__(comport, logging)
         self.config_16   = t_16_Bit_Options()
         self.config_8    = t_8_Bit_Options()
         self.config_var  = t_var_size_Options()
@@ -820,8 +861,8 @@ class Protocol(BP_TOOL):
     Base class for the Commands
     """
 
-    def __init__(self, comport):
-        super(Protocol, self).__init__(comport)
+    def __init__(self, comport, logging):
+        super(Protocol, self).__init__(comport, logging)
         self.to_follow = 0
         self.validcommands = [
             BP_TOOL.ARM,         
@@ -933,19 +974,22 @@ class Protocol(BP_TOOL):
 
     def __send_with_retries(self, data, retries = 5):
         # Retry up to 5 times.
-        for retry in range(retries):
+        #for retry in range(retries):
+        while retries:
+            retries -= 1
             self.s_write(data)
             r = self.s_read()
 
             if len(r) == 0:
-                raise IOError('No response from shouter.') 
+                if not retries:
+                    raise IOError('No response from shouter.') 
+                continue
 
-            
             # Handle response will set the dict with proper values.
             rval = self.__get_received_packet(r)
             if rval != False:
                 return rval
-        raise IOError('Max NACK reached!') 
+        raise Max_Retry_Exception('Max NACK reached!') 
 
     def interact_with_shouter(self, data):
         '''
@@ -1042,11 +1086,11 @@ class Bin_API(Protocol):
 
     """
 
-    def __init__(self, comport):
+    def __init__(self, comport, logging = False):
         """
         Init will connect to the com port of the shouter.
         """
-        super(Bin_API, self).__init__(comport)
+        super(Bin_API, self).__init__(comport, logging)
 
     def cmd_default_options(self, timeout = 0):
         self.send_command_to_shouter(BP_TOOL.DEFAULT)
@@ -1055,7 +1099,9 @@ class Bin_API(Protocol):
         self.send_command_to_shouter(BP_TOOL.DISARM)
 
     def cmd_arm(self, timeout = 0):
-        self.send_command_to_shouter(BP_TOOL.ARM)
+        rval = self.send_command_to_shouter(BP_TOOL.ARM)
+        if rval != BP_TOOL.ARM:
+            raise Firmware_State_Exception("State:" + self.get_state() + str(self.get_faults_latched()))
     
     def cmd_pulse(self, timeout = 0):
         self.send_command_to_shouter(BP_TOOL.PULSE)
@@ -1067,8 +1113,25 @@ class Bin_API(Protocol):
         self.send_command_to_shouter(BP_TOOL.CLEAR_FAULTS)
         self.cmd_arm()
 
+    def ready_for_commands(self, retries = 3):
+        """
+        ready_for_commands is a function to wait for the firmware to be ready to communicate
+        """
+        while retries:
+            try:
+                self.refresh()
+                return True
+            except Reset_Exception as e:
+                pass
+            except Max_Retry_Exception as e:
+                pass
+            finally:
+                retries -= 1
+        raise e
+
     def cmd_reset(self, timeout = 0):
         self.send_command_to_shouter(BP_TOOL.RESET)
+        return self.ready_for_commands()
 
     def get_board_id(self, timeout = 0):
         """ This will get the board id. 

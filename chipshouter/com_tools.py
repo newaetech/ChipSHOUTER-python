@@ -48,6 +48,8 @@ from PyCRC.CRCCCITT import CRCCCITT
 from _socket import htonl, htons
 import pprint
 import time
+from console.serial_interface import Serial_interface
+from console.console import Console 
 
 class Firmware_State_Exception(Exception):
     pass
@@ -1446,6 +1448,20 @@ class Bin_API(Protocol):
             packet += send
 
             self.interact_with_shouter(packet)
+
+    def run_console(self):
+        self.ctl_disconnect()
+        serial = Serial_interface(use_threads = False)
+        # Open the port
+        if serial.s_open(self.comport, timeout = .01):
+            print("Connected successful")
+        else:
+            print("Not connected")
+            exit()
+        my_console = Console(serial, threads = False)
+        my_console.console()
+        self.ctl_connect()
+        print 'Console Complete'
 
 ################################################################################
 def main():

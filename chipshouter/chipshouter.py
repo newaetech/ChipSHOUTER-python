@@ -301,6 +301,13 @@ class ChipSHOUTER(DisableNewAttr):
         """
         return self.__connected
 
+    def run_console(self):
+        """
+        Runs the serial interface console in text mode.
+        """
+        self.com_api.run_console()
+        return
+
     def ready_for_commands(self, retries = 3):
         """
         ready_for_commands is a function to wait for the firmware to be ready to communicate

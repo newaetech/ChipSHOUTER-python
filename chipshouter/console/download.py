@@ -142,9 +142,9 @@ class cs_dl():
             f.close()
         return data
 
-    def get_file_size(self, filename):
+    def get_file_size(self, file_tx):
         ''' Gets the number of packets in the file for downloading '''
-        file_tx = self.file_get(filename)
+#        file_tx = self.file_get(filename)
         packets = 0
         try:
             end = file_tx.find('\x7f') + 1
@@ -158,8 +158,8 @@ class cs_dl():
             end = file_tx.find('\x7f') + 1
         return packets
 
-    def send_packet(self, filename, packet, break_crc = False, break_frame = False):
-        file_tx       = self.file_get(filename)
+    def send_packet(self, file_tx, packet, break_crc = False, break_frame = False):
+#        file_tx       = self.file_get(filename)
         end           = 0
         packet_count  = 0
 

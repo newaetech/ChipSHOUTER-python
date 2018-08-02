@@ -163,7 +163,8 @@ class Console():
             dnld = cs_dl(self.serial.s_write, wait_callback = self.serial.s_read )
         self.serial.s_init(dnld.rx_serial)
 
-        filesize = dnld.get_file_size(self.sendfile)
+        file_tx  = dnld.file_get(self.sendfile)
+        filesize = dnld.get_file_size(file_tx)
 
         # Reset the board
         self.serial.s_write('s bb 0\n')
@@ -176,11 +177,12 @@ class Console():
             raise ValueError('Downloading did not receive response from the shouter')
             return
 
-        packet = 0
+        packet   = 0
+        
         # Download the file
         try:
             for i in tqdm(range(filesize), ascii = True, desc = 'Downloading'):
-                rval = dnld.send_packet(self.sendfile, packet, break_crc = break_crc, break_frame = break_frame)
+                rval = dnld.send_packet(file_tx, packet, break_crc = break_crc, break_frame = break_frame)
                 if rval == 0:
                     raise ValueError('Error with downloading file')
                     return '' 
@@ -192,7 +194,7 @@ class Console():
                     val_percent = i*100/filesize
                     sys.stdout.write('\r') #packet
                     sys.stdout.write( str(val_percent) + '%' + '#'*(val_percent / 10)) #packet
-                    rval = dnld.send_packet(self.sendfile, packet, break_crc = break_crc, break_frame = break_frame)
+                    rval = dnld.send_packet(file_tx, packet, break_crc = break_crc, break_frame = break_frame)
                     if rval == 0:
                         raise ValueError('Error with downloading file')
                         return '' 

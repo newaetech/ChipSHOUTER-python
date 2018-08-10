@@ -16,6 +16,7 @@ import time
 import argparse
 import threading
 import sys
+from binascii import hexlify
 from chipshouter.console.serial_interface import Serial_interface
 from chipshouter.console.download import cs_dl
 try:
@@ -166,14 +167,18 @@ class Console():
         file_tx  = dnld.file_get(self.sendfile)
         filesize = dnld.get_file_size(file_tx)
 
-        # Reset the board
-        self.serial.s_write('s bb 0\n')
-        print 'Setting download'
-        self.serial.s_write('reset\n')
+        got_ack = False
+        for x in range(2):
+            # Reset the board
+            self.serial.s_write('s bb 0\n')
+            print 'Sending reset for download .... [' + str(x) + ']'
+            self.serial.s_write('reset\n')
+            response = dnld.wait_for_ack(4)
+            if response == b'\x16':
+                got_ack = True
+                break
 
-        response = dnld.wait_for_ack(10)
-        print 'Done'
-        if response != b'\x16':
+        if got_ack == False:
             raise ValueError('Downloading did not receive response from the shouter')
             return
 
@@ -209,7 +214,6 @@ class Console():
         # Check for verify if needed
         if verify:
             ret = dnld.wait_for_ack(5)
-            print 'Got someting' + ret 
             self.sendfile = tempsendfile
             if ret == b'\x1a':
                 return True

@@ -456,23 +456,24 @@ class ChipSHOUTER(DisableNewAttr):
                              a fault has occured during the arm period.
 
         :Types:
-            - **probe**       - Probe connection is not connected properly.
-            - **overtemp**    - One of the temperature sensors has gone over 80C
+            - **fault_probe**    - Probe connection is not connected properly.
+            - **fault_overtemp** - One of the temperature sensors has gone over 80C
             
                                 **Note:** *This will not recover until temperature
                                 goes below 70C.*
-            - **open**        - The case is open.
-            - **highv**       - Measured high voltage disagrees with requested by too much. 
-            - **ramcrc**      - RAM corrution has occured.
-            - **eecrc**       - EEPROM corruption has occured.
-            - **gpio**        - GPIO mismatch between a requested value and actual.
-            - **charge**      - Charge circuit error, or 19V input out-of-range (including brown-out).  
-            - **trigger**     - Trigger occured while disarmed or external hardware trigger
+
+            - **fault_panel_open**    - The case is open.
+            - **fault_high_voltage**  - Measured high voltage disagrees with requested by too much. 
+            - **fault_ram_crc**       - RAM corrution has occured.
+            - **fault_eeprom_crc**    - EEPROM corruption has occured.
+            - **fault_gpio_error**    - GPIO mismatch between a requested value and actual.
+            - **fault_charge**        - Charge circuit error, or 19V input out-of-range (including brown-out).  
+            - **fault_trigger_error** - Trigger occured while disarmed or external hardware trigger
               help active for too long (More than 10msec)
-            - **hw**          - Hardware monitor detected unspecified hardware fault.
-            - **trig_g**      - Trigger was attempted while device disarmed.
-            - **overvoltage** - Charge circuit error, over-voltage on HV output detected.
-            - **temp_sensor** - Temperature sensor has failed to read correctly for too long.
+            - **fault_hardware_exc**  - Hardware monitor detected unspecified hardware fault.
+            - **faults_trig_glitch**  - Trigger was attempted while device disarmed.
+            - **faults_overvoltage**  - Charge circuit error, over-voltage on HV output detected.
+            - **faults_temp_sensor**  - Temperature sensor has failed to read correctly for too long.
 
         :Example:
             >>> cs = ChipSHOUTER('COM10')     # Connect to shouter
@@ -486,7 +487,7 @@ class ChipSHOUTER(DisableNewAttr):
             >>> cs.state                      # Cause fault... and check state.
             'fault'
             >>> cs.faults_current             # List the faults.
-            [{'fault': 1, 'name': 'probe'}]
+            ['fault_probe']
             >>> cs.faults_current = 0         # After fault fixed, Clear it.
             >>> cs.state                      # Check the state
             'disarmed'

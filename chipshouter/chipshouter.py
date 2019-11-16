@@ -55,12 +55,12 @@
     >>> print cs #get all values of device
     >>> cs.voltage = 500
     >>> cs.pulse.width = 180
-    >>> cs.arm = 1
+    >>> cs.armed = 1
     >>> cs.pulse = 1
     >>> cs.pat_wave = [0,1,1,1,0,0,0,0,0,0,1,1,1,1,1,0]
     >>> cs.pat_enable = 1 #Turn on special pattern trigger
     >>> cs.pulse = 1
-    >>> cs.arm = False #Can use true/false or 1/0
+    >>> cs.armed = False #Can use true/false or 1/0
 
 '''
 from collections import OrderedDict

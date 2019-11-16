@@ -3,3 +3,6 @@ PyCRC==1.21
 
 # Require future only for Python2
 future ; python_version < '3'
+# Require six for a (Pylint compatible) way to have a
+# portable input()
+six

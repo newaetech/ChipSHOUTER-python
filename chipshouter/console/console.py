@@ -24,6 +24,8 @@ try:
 except Exception as e:
     print(e)
 
+import six
+
 #sys.settrace
 #---------------------------------------------------------------------------
 class Console():
@@ -51,7 +53,7 @@ class Console():
     def mod_sendfile(self):
         """ This will reset the board .. used from the menu. """
         print('Current file: ' + self.sendfile)
-        newfile = input("Enter new relative filename: ")
+        newfile = six.moves.input("Enter new relative filename: ")
         if len(newfile):
             self.sendfile = newfile
         print('Console is now using: ' + self.sendfile)
@@ -95,7 +97,7 @@ class Console():
     def display_rx(self, data):
         """ Display what was received, this is the intended callback for rx serial.
         """
-        sys.stdout.write(data)
+        sys.stdout.write(data.decode("ASCII"))
 
     #---------------------------------------------------------------------------
     def console(self):
@@ -106,7 +108,7 @@ class Console():
         self.serial.s_init(self.rx_callback)
         while not self.stop:
             send_to_shouter = True
-            data = input("")
+            data = six.moves.input("")
             for x in self.menu:
                 if x['input'] == data:
                     send_to_shouter = False

@@ -158,7 +158,7 @@ class Serial_interface(object):
         """
         if self.s.is_open:
             try:
-                self.s.write(data)
+                self.s.write(data.encode("ASCII"))
             except:
                 print("Could not write to port")
         else:

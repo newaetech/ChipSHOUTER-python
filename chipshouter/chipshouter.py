@@ -64,9 +64,9 @@
 
 '''
 from collections import OrderedDict
-from com_tools import Bin_API
-from com_tools import Reset_Exception 
-from com_tools import Max_Retry_Exception 
+from .com_tools import Bin_API
+from .com_tools import Reset_Exception
+from .com_tools import Max_Retry_Exception
 import time
 
 api_version = '0.0.0'
@@ -957,26 +957,26 @@ def main():
     import time
     """ This is the main entry for the console."""
     cs = ChipSHOUTER('COM10')
-    print cs.status()
-    print cs.voltage
-    print 'Arming!'
+    print(cs.status())
+    print(cs.voltage)
+    print('Arming!')
     cs.mute = False
     cs.armed = True
-    print cs.voltage.set
-    print cs.voltage.measured
+    print(cs.voltage.set)
+    print(cs.voltage.measured)
     time.sleep(1)
 
     if cs.status():
-        print cs.voltage
-        print '-'*40
-        print cs.voltage.set
-        print cs.voltage.measured
+        print(cs.voltage)
+        print('-'*40)
+        print(cs.voltage.set)
+        print(cs.voltage.measured)
 
         cs.voltage.set = 205
-        print 'And... ' + str(cs.voltage)
+        print('And... ' + str(cs.voltage))
         cs.voltage = 206
-        print cs.voltage.set
-        print cs.voltage
+        print(cs.voltage.set)
+        print(cs.voltage)
     cs.armed = False 
     time.sleep(1)
     cs.disconnect()

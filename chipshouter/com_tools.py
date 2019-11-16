@@ -40,6 +40,9 @@
 >>>  |                         |        |                    |                            |
 
 """
+
+from __future__ import division
+
 from binascii import hexlify
 import serial
 import serial.tools.list_ports
@@ -48,8 +51,8 @@ from PyCRC.CRCCCITT import CRCCCITT
 from _socket import htonl, htons
 import pprint
 import time
-from console.serial_interface import Serial_interface
-from console.console import Console 
+from .console.serial_interface import Serial_interface
+from .console.console import Console
 
 class Firmware_State_Exception(Exception):
     pass
@@ -61,7 +64,7 @@ class Reset_Exception(Exception):
     pass
 
 class Connection(object):
-    START_UP_STRING = 'ChipShouter by NewAE Technology Inc.'
+    START_UP_STRING = b'ChipShouter by NewAE Technology Inc.'
 
     def __init__(self, comport, logging = False):
         self.comport = comport
@@ -116,8 +119,8 @@ class Connection(object):
             except Exception as e:
                 print("Could not read from port" + str(e))
 
-            start = data.find('\x7e')
-            end   = data.find('\x7f')
+            start = data.find(b'\x7e')
+            end   = data.find(b'\x7f')
 
             txt_start = ''
             txt_end   = ''
@@ -204,7 +207,7 @@ class Option_group(object):
 
         """
         bit_array = bytearray()
-        bits_array_length = (limit) / 8
+        bits_array_length = (limit) // 8
 
         for x in range(bits_array_length):
             bit_array.append(0)
@@ -213,7 +216,7 @@ class Option_group(object):
         for x in range(limit): 
             # set the bits
             if bools[x]['value'] == True:
-                index = x/8
+                index = x//8
                 bit   = x % 8 
                 bit_array[index] |= 1 << bit 
 
@@ -563,14 +566,14 @@ class BP_TOOL(Connection):
     def set_options_requested(self, options):
         max_value = max(options)
         bit_array = bytearray()
-        bits_array_length = max_value / 8 + 1
+        bits_array_length = max_value // 8 + 1
 
         for x in range(bits_array_length):
             bit_array.append(0)
 
         for x in options:
             # set the bits
-            index = x/8
+            index = x//8
             bit   = x % 8 
             bit_array[index] |= 1 << bit 
 
@@ -671,9 +674,9 @@ class BP_TOOL(Connection):
 
     def build_request_all(self):
         packet = bytearray()
-        packet.append(int(t_16_Bit_Options.MAX / 8 + 1))
-        packet.append(int(t_8_Bit_Options.MAX / 8 + 1))
-        packet.append(int(t_var_size_Options.MAX / 8 + 1))
+        packet.append(int(t_16_Bit_Options.MAX // 8 + 1))
+        packet.append(int(t_8_Bit_Options.MAX // 8 + 1))
+        packet.append(int(t_var_size_Options.MAX // 8 + 1))
 
         # ---------------------------------------------------------------------
         # Request all the 16 bit options.
@@ -765,98 +768,98 @@ class BP_TOOL(Connection):
         t_16   = t_16_Bit_Options()
         t_8    = t_8_Bit_Options()
         t_var  = t_8_Bit_Options()
-        print 'Received ' + str(len(data)) + ' Bytest'
+        print('Received ' + str(len(data)) + ' Bytest')
 
         #----------------------------------------------------------------------
-        print '='*80
-        print 'Handling Protocol response: ' + hexlify(data)
+        print('='*80)
+        print('Handling Protocol response: ' + hexlify(data))
         #----------------------------------------------------------------------
-        print '='*80
-        print 'Overhead Bytes: ' + hexlify(data[:BP_TOOL.OVERHEAD])
-        print 'Number of UINT16 bitstream data = ' + str(data[BP_TOOL.UINT16S])
-        print 'Number of UINT8  bitstream data = ' + str(data[BP_TOOL.UINT8S])
-        print 'Number of var    bitstream data = ' + str(data[BP_TOOL.VARS])
-        print 'Follow = ' + str(self.get_follow(data))
-        print 'Length = ' + str(self.get_length(data))
+        print('='*80)
+        print('Overhead Bytes: ' + hexlify(data[:BP_TOOL.OVERHEAD]))
+        print('Number of UINT16 bitstream data = ' + str(data[BP_TOOL.UINT16S]))
+        print('Number of UINT8  bitstream data = ' + str(data[BP_TOOL.UINT8S]))
+        print('Number of var    bitstream data = ' + str(data[BP_TOOL.VARS]))
+        print('Follow = ' + str(self.get_follow(data)))
+        print('Length = ' + str(self.get_length(data)))
         start = self.get_follow_and_length(data)
         end   = start + BP_TOOL.SIZE_FOLLOW + BP_TOOL.SIZE_LEN
-        print 'Following bytes and length      = ' + hexlify(data[start:end])
+        print('Following bytes and length      = ' + hexlify(data[start:end]))
         #----------------------------------------------------------------------
-        print '='*80
+        print('='*80)
         bits = self.get_16bit_options_bits(data)
         values = self.get_16bit_options(data)
         options = self.get_options_requested(bits)
 
         # Display the options if exist
         if len(options):
-            print 'UINT16 bits...... : ' + hexlify(bits)
-            print 'UINT16 data...... : ' + hexlify(values)
-            print 'UINT16 Num of opts ... : ' + str(len(values) / 2)
-            print 'UINT16 options... : ' + str(options)
-            print '-'*80
+            print('UINT16 bits...... : ' + hexlify(bits))
+            print('UINT16 data...... : ' + hexlify(values))
+            print('UINT16 Num of opts ... : ' + str(len(values) // 2))
+            print('UINT16 options... : ' + str(options))
+            print('-'*80)
             for x in range(len(options)):
                 value = (values[x*2] << 8) | (values[x*2 + 1])
                 opt = options[x]
                 t_16.set_value(opt, value)
-                print 'Option: ' + t_16.options[opt]['name'] + ' ' + str(value)
+                print('Option: ' + t_16.options[opt]['name'] + ' ' + str(value))
             pprint.pprint(t_16.options)
         else:
-            print 'No 16 bit options'
+            print('No 16 bit options')
 
         #----------------------------------------------------------------------
-        print '-'*80
+        print('-'*80)
         bits = self.get_8bit_options_bits(data)
         values = self.get_8bit_options(data)
         options = self.get_options_requested(bits)
         # Display the options if exist
         if len(options):
-            print 'UINT8 bits...... : ' + hexlify(bits)
-            print 'UINT8 data...... : ' + hexlify(values)
-            print 'UINT8 options... : ' + str(options)
-            print '-'*80
+            print('UINT8 bits...... : ' + hexlify(bits))
+            print('UINT8 data...... : ' + hexlify(values))
+            print('UINT8 options... : ' + str(options))
+            print('-'*80)
             for x in range(len(options)):
                 value = values[x]
                 opt = options[x]
                 t_8.set_value(opt, value)
-                print 'Option: ' + t_8.options[x]['name'] + ' ' + str(value)
+                print('Option: ' + t_8.options[x]['name'] + ' ' + str(value))
             pprint.pprint(t_8.options)
         else:
-            print 'No 8 bit options'
+            print('No 8 bit options')
 
         #----------------------------------------------------------------------
-        print '-'*80
+        print('-'*80)
         bits = self.get_var_options_bits(data)
         values = self.get_var_options(data)
-        print 'VARS !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+        print('VARS !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
         # Display the options if exist
         if len(values):
             pprint.pprint(values)
         else:
-            print 'No var bit options'
+            print('No var bit options')
 
-        print 'VAR options... : ' + str(self.get_options_requested(bits))
-        print 'VARS !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
-        print '-'*80
+        print('VAR options... : ' + str(self.get_options_requested(bits)))
+        print('VARS !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+        print('-'*80)
 
     def display_options(self):
-        print 'Options'
-        print '='*80
-        print '16 bit options'
-        print '='*80
+        print('Options')
+        print('='*80)
+        print('16 bit options')
+        print('='*80)
         pprint.pprint(self.config_16.options)
-        print 'Current Faults'
-        print '='*80
+        print('Current Faults')
+        print('='*80)
         pprint.pprint(self.config_16.faults_current)
-        print 'Latched Faults'
-        print '='*80
+        print('Latched Faults')
+        print('='*80)
         pprint.pprint(self.config_16.faults_latched)
-        print '8 bit options'
-        print '='*80
+        print('8 bit options')
+        print('='*80)
         pprint.pprint(self.config_8.options)
-        print 'bool options'
-        print '='*80
+        print('bool options')
+        print('='*80)
         pprint.pprint(self.config_8.bools)
-        print '-'*80
+        print('-'*80)
 
 class Protocol(BP_TOOL):
     """
@@ -1019,11 +1022,11 @@ class Protocol(BP_TOOL):
 
     def __show_data(self, data, ask = True):
         if ask:
-            print 'Requesting: ' + ' ' + hexlify(data)
-        print 'BP_TOOL.OVERHEAD) ' + str(BP_TOOL.OVERHEAD)
-        print '[BP_TOOL.UINT16S] ' + str(data[BP_TOOL.UINT16S])
-        print '[BP_TOOL.UINT8S]) ' + str(data[BP_TOOL.UINT8S])
-        print '[BP_TOOL.VARS     ' + str(data[BP_TOOL.VARS])
+            print('Requesting: ' + ' ' + hexlify(data))
+        print('BP_TOOL.OVERHEAD) ' + str(BP_TOOL.OVERHEAD))
+        print('[BP_TOOL.UINT16S] ' + str(data[BP_TOOL.UINT16S]))
+        print('[BP_TOOL.UINT8S]) ' + str(data[BP_TOOL.UINT8S]))
+        print('[BP_TOOL.VARS     ' + str(data[BP_TOOL.VARS]))
         pass
 
     def __is_nack(self, data):
@@ -1141,7 +1144,7 @@ class Bin_API(Protocol):
         :returns (String): name of the board programmed at time of assembly. 
         """
         self.get_option_from_shouter([t_var_size_Options.BOARD_ID], BP_TOOL.REQUEST_VAR)
-        return str(self.config_var.options[t_var_size_Options.BOARD_ID]['value'])
+        return str(self.config_var.options[t_var_size_Options.BOARD_ID]['value'].decode("ASCII"))
 
     def get_id(self, timeout = 0):
         return self.get_board_id()
@@ -1152,7 +1155,7 @@ class Bin_API(Protocol):
         :returns (String): string of the state.
         """
         self.get_option_from_shouter([t_var_size_Options.CURRENT_STATE], BP_TOOL.REQUEST_VAR)
-        rval = str(self.config_var.options[t_var_size_Options.CURRENT_STATE]['value'])
+        rval = str(self.config_var.options[t_var_size_Options.CURRENT_STATE]['value'].decode("ASCII"))
         return rval
 
     def get_is_reset(self, timeout = 0):
@@ -1392,7 +1395,7 @@ class Bin_API(Protocol):
     def set_pat_wave(self, value, timeout = 0):
         wave = value
         bit_array = bytearray()
-        bits_array_length = (len(wave)) / 8
+        bits_array_length = (len(wave)) // 8
 
         if len(wave) % 8:
             bits_array_length += 1
@@ -1405,10 +1408,10 @@ class Bin_API(Protocol):
 
         index = 0
         for x in wave: 
-            if x == '1':
-                bit_array[index / 8] |= (0x80 >> (index % 8))
+            if x == '1' or x == 1:
+                bit_array[index // 8] |= (0x80 >> (index % 8))
                 pass
-            elif x == '0':
+            elif x == '0' or x == 0:
                 pass
             else:
                 raise ValueError('Only \'1\' an \'0\' allowed')
@@ -1423,7 +1426,7 @@ class Bin_API(Protocol):
             send = bit_array[x:(x + max_bytes_packet)]
             send_bits_length = max_bits_packet
 
-            if (((x / max_bytes_packet) + 1) * (max_bits_packet)) > len(wave):
+            if (((x // max_bytes_packet) + 1) * (max_bits_packet)) > len(wave):
                 send_bits_length = len(wave) % (max_bits_packet)
 
             total_bit_count += send_bits_length
@@ -1461,13 +1464,13 @@ class Bin_API(Protocol):
         my_console = Console(serial, threads = False)
         my_console.console()
         self.ctl_connect()
-        print 'Console Complete'
+        print('Console Complete')
 
 ################################################################################
 def main():
     """ This is the main entry for the console."""
     bp = Bin_API('COM10')
-    print 'Testing'
+    print('Testing')
 
     bp.set_hwtrig_term(1)
 

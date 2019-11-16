@@ -130,7 +130,7 @@ class cs_dl():
         try:
             f = open(my_file, "rb")
         except:
-            print("Error opening " + my_file)
+            print(("Error opening " + my_file))
             return ''
         try:
             byte = f.read(1)
@@ -149,8 +149,8 @@ class cs_dl():
         try:
             end = file_tx.find('\x7f') + 1
         except Exception as e:
-            print 'Error with the file'
-            print e
+            print('Error with the file')
+            print(e)
             return 0
         while end > 0:
             packets += 1
@@ -196,7 +196,7 @@ class cs_dl():
                 end     = file_tx.find('\x7f') + 1
                 start   = file_tx.find('\x7e')
                 tx_packet = file_tx[start:end]
-        print 'Returning'
+        print('Returning')
         return 0
 
     #---------------------------------------------------------------------------
@@ -229,7 +229,7 @@ class cs_dl():
         """
         if self.__print_rx_details:
             if len(data):
-                print 'rx: ' + hexlify(data)
+                print('rx: ' + hexlify(data))
 
         # This -----------------------------------------------------------------
         # Copy received to the buffer.
@@ -251,7 +251,7 @@ class cs_dl():
             start = self.__rx_buffer[:end].rfind('\x7e')
             self.buff.add(self.packet_unstuff(self.__rx_buffer[start:end + 1]))
             if self.__print_rx:
-                print("PACKET!!: " + hexlify(self.__rx_buffer[start:end + 1]))
+                print(("PACKET!!: " + hexlify(self.__rx_buffer[start:end + 1])))
 
             self.__rx_buffer = self.__rx_buffer[end + 1:]
             start = self.__rx_buffer.find('\x7e')

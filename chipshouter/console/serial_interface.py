@@ -6,7 +6,7 @@ This is the file to handle the serial interfaces.
 """
 #---------------------------------------------------------------------------
 
-import Queue
+import queue
 from threading import Thread
 import serial
 import serial.tools.list_ports
@@ -20,8 +20,8 @@ class Serial_interface(object):
         self.__rx_callback  = None 
 
         if self.use_thread:
-            self.__rx_queue = Queue.Queue() 
-            print 'Starting serial with threads'
+            self.__rx_queue = queue.Queue()
+            print('Starting serial with threads')
 
     def __thread_run_rx(self):
         """ This will scan the quit attribute to see  if we need to disconnect and 
@@ -67,7 +67,7 @@ class Serial_interface(object):
                     except Exception as e: 
                         print(e)
                         print("Bad callback in rx")
-                except Queue.Empty:
+                except queue.Empty:
                     pass
             time.sleep(.02)
         print("Exiting serial_rx Thread because I was told")
@@ -128,7 +128,7 @@ class Serial_interface(object):
                 self.__serial_rx_app_handle_thread.start()
             
         except Exception as err:
-            print err
+            print(err)
             connected = False
         return(connected)
 
@@ -205,9 +205,9 @@ user_input = ''
 def scan_input():
     global user_input
     while True:
-        user_input = raw_input("scan_input:")
+        user_input = input("scan_input:")
         if user_input == 'quit':
-            print 'Got quit exiting'
+            print('Got quit exiting')
             break
     pass
 
@@ -235,37 +235,37 @@ def main():
 
     #----------------------------------------------------------------------------
     #--- Start the Shouter API 
-    data = raw_input("Yes for threading Otherwise select no:")
+    data = input("Yes for threading Otherwise select no:")
     if data.lower() == 'yes':
-        print '-------------------------'
-        print 'Testing Threading version'
-        print '-------------------------'
+        print('-------------------------')
+        print('Testing Threading version')
+        print('-------------------------')
         st = Serial_interface()
         st.s_init(test_rx)
         if st.s_open(port) == True:
-            print 'Connected to comport:'
+            print('Connected to comport:')
             data = ''
             while True:
-                data = raw_input("")
+                data = input("")
                 if data == 'quit':
                     break
                 st.s_write(data)
                 st.s_write('\n')
             st.s_close()
         else:
-            print 'Can not Connect:'
+            print('Can not Connect:')
     else:
-        print '-------------------------'
-        print 'Testing NON Threading version'
-        print '-----------------------------'
+        print('-------------------------')
+        print('Testing NON Threading version')
+        print('-----------------------------')
         st = Serial_interface(use_thread = False)
         st.s_init(test_rx)
         if st.s_open(port) == True:
-            print 'Connected to comport:'
+            print('Connected to comport:')
             data = ''
             input_thread  = Thread(target = scan_input)
             input_thread.start()
-            print 'Wait for input:'
+            print('Wait for input:')
 
             #--------------------------------
             while True:
@@ -273,7 +273,7 @@ def main():
                 if len(data):
                     if data == 'quit':
                         break
-                    print 'Writing data: ' + data
+                    print('Writing data: ' + data)
                     st.s_write(data)
                     st.s_write('\n')
                 else:
@@ -283,7 +283,7 @@ def main():
             #--------------------------------
             st.s_close()
         else:
-            print 'Can not Connect:'
+            print('Can not Connect:')
         pass
 
 

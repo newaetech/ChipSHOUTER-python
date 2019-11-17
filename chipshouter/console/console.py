@@ -22,7 +22,9 @@ from chipshouter.console.download import cs_dl
 try:
     from tqdm import tqdm
 except Exception as e:
-    print e
+    print(e)
+
+import six
 
 #sys.settrace
 #---------------------------------------------------------------------------
@@ -50,11 +52,11 @@ class Console():
     #---------------------------------------------------------------------------
     def mod_sendfile(self):
         """ This will reset the board .. used from the menu. """
-        print 'Current file: ' + self.sendfile
-        newfile = raw_input("Enter new relative filename: ")
+        print('Current file: ' + self.sendfile)
+        newfile = six.moves.input("Enter new relative filename: ")
         if len(newfile):
             self.sendfile = newfile
-        print 'Console is now using: ' + self.sendfile
+        print('Console is now using: ' + self.sendfile)
 
     #---------------------------------------------------------------------------
     def reset(self):
@@ -77,14 +79,14 @@ class Console():
     #---------------------------------------------------------------------------
     def print_menu(self):
         """ Prints the menu. """
-        print "------------------------------------------------------------"
-        print " The following SPECIAL COMMANDS are not sent to the         "
-        print " ChipSHOUTER over the serial port, but are instead processed"
-        print " by this Python application:                                 "
+        print("------------------------------------------------------------")
+        print(" The following SPECIAL COMMANDS are not sent to the         ")
+        print(" ChipSHOUTER over the serial port, but are instead processed")
+        print(" by this Python application:                                 ")
         for x in self.menu:
-            print '    {:<10}'.format(x['input']) + '- ' + x['help']
-        print "If none of these it will send to the board what you type."
-        print "------------------------------------------------------------"
+            print('    {:<10}'.format(x['input']) + '- ' + x['help'])
+        print("If none of these it will send to the board what you type.")
+        print("------------------------------------------------------------")
 
     #---------------------------------------------------------------------------
     def quit(self):
@@ -95,7 +97,7 @@ class Console():
     def display_rx(self, data):
         """ Display what was received, this is the intended callback for rx serial.
         """
-        sys.stdout.write(data)
+        sys.stdout.write(data.decode("ASCII"))
 
     #---------------------------------------------------------------------------
     def console(self):
@@ -106,7 +108,7 @@ class Console():
         self.serial.s_init(self.rx_callback)
         while not self.stop:
             send_to_shouter = True
-            data = raw_input("")
+            data = six.moves.input("")
             for x in self.menu:
                 if x['input'] == data:
                     send_to_shouter = False
@@ -125,25 +127,25 @@ class Console():
     #---------------------------------------------------------------------------
     def verify(self):
         """ This will download the send file to the shouter. """
-        print '*'*30
-        print 'Stage 1 Downloading'
-        print '*'*30
+        print('*'*30)
+        print('Stage 1 Downloading')
+        print('*'*30)
         if self.download(verify = True):
-            print '*'*30
-            print 'Stage 2 Downloading'
-            print '*'*30
+            print('*'*30)
+            print('Stage 2 Downloading')
+            print('*'*30)
             checkstring = 'ChipShouter by NewAE Technology Inc.'
             rval = self.download(checkstring = checkstring)
             if checkstring in rval:
-                print 'Good download'
+                print('Good download')
             else:
                 raise ValueError('Error App did not start')
-                print 'Error with downloading file'
-                print '*'*30
+                print('Error with downloading file')
+                print('*'*30)
         else:
             raise ValueError('Error with downloading file')
-            print 'Error with downloading file'
-            print '*'*30
+            print('Error with downloading file')
+            print('*'*30)
 
     #---------------------------------------------------------------------------
     def download(self, verify = False, checkstring = None, break_crc = False, break_frame = False):
@@ -157,7 +159,7 @@ class Console():
 #        if self.rx_timer:
         self.rx_timer.cancel()
 
-        print 'Sending: ' + self.sendfile
+        print('Sending: ' + self.sendfile)
         if self.threads == True:
             dnld = cs_dl(self.serial.s_write)
         else:
@@ -171,7 +173,7 @@ class Console():
         for x in range(2):
             # Reset the board
             self.serial.s_write('s bb 0\n')
-            print 'Sending reset for download .... [' + str(x) + ']'
+            print('Sending reset for download .... [' + str(x) + ']')
             self.serial.s_write('reset\n')
             response = dnld.wait_for_ack(4)
             if response == b'\x16':
@@ -186,14 +188,14 @@ class Console():
         
         # Download the file
         try:
-            for i in tqdm(range(filesize), ascii = True, desc = 'Downloading'):
+            for i in tqdm(list(range(filesize)), ascii = True, desc = 'Downloading'):
                 rval = dnld.send_packet(file_tx, packet, break_crc = break_crc, break_frame = break_frame)
                 if rval == 0:
                     raise ValueError('Error with downloading file')
                     return '' 
                 packet += 1
         except Exception as e:
-            print e
+            print(e)
             try:
                 for i in range(filesize):
                     val_percent = i*100/filesize
@@ -205,8 +207,8 @@ class Console():
                         return '' 
                     packet += 1
             except Exception as e:
-                print 'download without tqdm'
-                print e
+                print('download without tqdm')
+                print(e)
                 raise
 
             self.stop = True
@@ -267,7 +269,7 @@ def main():
     if args.sendfile:
         sendfile = args.sendfile
     if args.threads:
-        print 'Using threads'
+        print('Using threads')
         threads = True
         wait_callback = None
     else:
@@ -300,7 +302,7 @@ def main():
         elif args.test_frame:
             my_console.test_frame()
         elif args.checkstring:
-            print 'Checking for ' + args.checkstring
+            print('Checking for ' + args.checkstring)
             rval = my_console.download(checkstring = args.checkstring)
             if args.checkstring not in rval:
                 raise ValueError('Did not verify' + args.checkstring)

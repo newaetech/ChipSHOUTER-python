@@ -1,3 +1,3 @@
 __all__ = ["chipshouter"]
 
-from chipshouter import ChipSHOUTER
+from .chipshouter import ChipSHOUTER

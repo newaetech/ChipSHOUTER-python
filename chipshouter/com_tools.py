@@ -122,8 +122,8 @@ class Connection(object):
             start = data.find(b'\x7e')
             end   = data.find(b'\x7f')
 
-            txt_start = ''
-            txt_end   = ''
+            txt_start = b''
+            txt_end   = b''
             if start < 0:
                 txt_start = data
             elif end < 0:

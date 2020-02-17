@@ -1,5 +1,4 @@
 pyserial==3.4
-PyCRC==1.21
 
 # Require future only for Python2
 future ; python_version < '3'

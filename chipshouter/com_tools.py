@@ -46,9 +46,6 @@ from __future__ import division
 from binascii import hexlify
 import serial
 import serial.tools.list_ports
-from PyCRC.CRC32 import CRC32
-from PyCRC.CRCCCITT import CRCCCITT
-from _socket import htonl, htons
 import pprint
 import time
 from .console.serial_interface import Serial_interface
@@ -539,6 +536,18 @@ class BP_TOOL(Connection):
         self.config_16   = t_16_Bit_Options()
         self.config_8    = t_8_Bit_Options()
         self.config_var  = t_var_size_Options()
+        # From https://stackoverflow.com/a/25259157
+        def _crc_init(c):
+            crc = 0
+            c = c << 8
+            for j in range(8):
+                if (crc ^ c) & 0x8000:
+                    crc = (crc << 1) ^ 0x1021
+                else:
+                    crc = crc << 1
+                c = c << 1
+            return crc
+        self._crc_tab = [ _crc_init(i) for i in range(256) ]
 
     def get_follow(self, data):
         return data[BP_TOOL.OVERHEAD + data[BP_TOOL.UINT16S] + data[BP_TOOL.UINT8S] + data[BP_TOOL.VARS]]
@@ -723,9 +732,11 @@ class BP_TOOL(Connection):
 
     def add_crc(self, packet):
         # Add the CRC.
-        crc = CRCCCITT(version = "1D0F").calculate(''.join(map(chr, packet)))
-        packet.append((htons(crc) & 0x00FF))
-        packet.append((htons(crc) & 0xFF00) >> 8)
+        crc = 0x1d0f
+        for c in packet:
+            crc = ((crc << 8) ^ self._crc_tab[(crc >> 8) ^ c]) & 0xFFFF
+        packet.append(crc >> 8)
+        packet.append(crc & 0xFF)
         return packet
 
     def build_set_option(self, options, req_type, values):
@@ -968,7 +979,9 @@ class Protocol(BP_TOOL):
         # Unpack the data.
         data = self.__packet_unstuff(data)
         # Verify that the packet is good.
-        crc = CRCCCITT(version = "1D0F").calculate(''.join(map(chr, data)))
+        crc = 0x1d0f
+        for c in data:
+            crc = ((crc << 8) ^ self._crc_tab[(crc >> 8) ^ c]) & 0xFFFF
 
         # Validate and return
         if crc == 0:

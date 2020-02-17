@@ -17,7 +17,6 @@ setup(
     scripts=['scripts/shouter-console.py'],
     install_requires = [
         'pyserial',
-        'PyCRC',\
         'tqdm'
     ],
 )

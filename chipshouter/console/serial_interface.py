@@ -158,9 +158,14 @@ class Serial_interface(object):
         """
         if self.s.is_open:
             try:
-                self.s.write(data.encode("ASCII"))
-            except:
+                if isinstance(data, (bytes, bytearray)):
+                    #print("Writing: %s"%str(data))
+                    self.s.write(data)
+                else:
+                    self.s.write(data.encode("ASCII"))
+            except Exception as e:
                 print("Could not write to port")
+                print(e)
         else:
             raise IOError('Comport is not open, use ctl_connect()')
 

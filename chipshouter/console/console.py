@@ -200,7 +200,7 @@ class Console():
                 for i in range(filesize):
                     val_percent = i*100/filesize
                     sys.stdout.write('\r') #packet
-                    sys.stdout.write( str(val_percent) + '%' + '#'*(val_percent / 10)) #packet
+                    sys.stdout.write( str(val_percent) + '%' + '#'*round(val_percent / 10)) #packet                    
                     rval = dnld.send_packet(file_tx, packet, break_crc = break_crc, break_frame = break_frame)
                     if rval == 0:
                         raise ValueError('Error with downloading file')

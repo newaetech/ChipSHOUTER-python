@@ -133,11 +133,7 @@ class cs_dl():
             print(("Error opening " + my_file))
             return ''
         try:
-            byte = f.read(1)
-            data = ''
-            while byte != "":
-                data = data + byte
-                byte = f.read(1)
+            data = f.read()
         finally:
             f.close()
         return data
@@ -147,7 +143,7 @@ class cs_dl():
 #        file_tx = self.file_get(filename)
         packets = 0
         try:
-            end = file_tx.find('\x7f') + 1
+            end = file_tx.find(b'\x7f') + 1
         except Exception as e:
             print('Error with the file')
             print(e)
@@ -155,7 +151,7 @@ class cs_dl():
         while end > 0:
             packets += 1
             file_tx = file_tx[end:]
-            end = file_tx.find('\x7f') + 1
+            end = file_tx.find(b'\x7f') + 1
         return packets
 
     def send_packet(self, file_tx, packet, break_crc = False, break_frame = False):
@@ -164,9 +160,14 @@ class cs_dl():
         packet_count  = 0
 
         # Get the first packet
-        end   = file_tx.find('\x7f') + 1
-        start = file_tx.find('\x7e')
+        end   = file_tx.find(b'\x7f') + 1
+        start = file_tx.find(b'\x7e')
         tx_packet = file_tx[start:end]
+        
+        if end < start:
+            raise IOError("Invalid file.")
+        #print("Sending %d:%d : %s"%(start, end, str(tx_packet)))
+        
         # bread_crc
         if break_crc:
             tx_packet = tx_packet[:-2]
@@ -176,6 +177,7 @@ class cs_dl():
             tx_packet = tx_packet[:-1]
             tx_packet += b'\x7f'
 
+
         # Find the packet # to send
         while end > 0 and start >= 0 :
             if packet == packet_count:
@@ -184,19 +186,21 @@ class cs_dl():
                     self.__cb_tx(tx_packet)
                     # Wait seconds for an ack
                     response = self.wait_for_ack(1)
+                    #print(response)
                     if response == b'\x15': #self.shout_dnld.dl_cmd_ack:
                         return len(tx_packet)
                     else:
                         retry = retry + 1
+                print("Failed #1")
                 return 0
             else:
                 packet_count += 1
                 # Get the next packet
                 file_tx = file_tx[end:]
-                end     = file_tx.find('\x7f') + 1
-                start   = file_tx.find('\x7e')
+                end     = file_tx.find(b'\x7f') + 1
+                start   = file_tx.find(b'\x7e')
                 tx_packet = file_tx[start:end]
-        print('Returning')
+        print('Failed #2')
         return 0
 
     #---------------------------------------------------------------------------
@@ -235,8 +239,8 @@ class cs_dl():
         # Copy received to the buffer.
         self.__rx_buffer = self.__rx_buffer + bytearray(data)
 
-        start = self.__rx_buffer.find('\x7e')
-        end   = self.__rx_buffer.find('\x7f')
+        start = self.__rx_buffer.find(b'\x7e')
+        end   = self.__rx_buffer.find(b'\x7f')
 
         # If not found clear the buffer and wait for it.
         if start < 0:
@@ -248,14 +252,14 @@ class cs_dl():
 
         # Get the frames
         while start < end:
-            start = self.__rx_buffer[:end].rfind('\x7e')
+            start = self.__rx_buffer[:end].rfind(b'\x7e')
             self.buff.add(self.packet_unstuff(self.__rx_buffer[start:end + 1]))
             if self.__print_rx:
                 print(("PACKET!!: " + hexlify(self.__rx_buffer[start:end + 1])))
 
             self.__rx_buffer = self.__rx_buffer[end + 1:]
-            start = self.__rx_buffer.find('\x7e')
-            end   = self.__rx_buffer.find('\x7f')
+            start = self.__rx_buffer.find(b'\x7e')
+            end   = self.__rx_buffer.find(b'\x7f')
             if start < 0:
                 self.__rx_buffer = bytearray()
                 return

@@ -527,6 +527,7 @@ class BP_TOOL(Connection):
     PULSE        = 5
     TRIGGER_SAFE = 6
     IS_RESET     = 7
+    EEPROM_WRITE = 8
     TIMEOUT      = 0xfc
     ACK          = 0x15 
     NACK         = 0xff 
@@ -882,6 +883,7 @@ class Protocol(BP_TOOL):
         self.to_follow = 0
         self.validcommands = [
             BP_TOOL.ARM,         
+            BP_TOOL.EEPROM_WRITE,
             BP_TOOL.DISARM,      
             BP_TOOL.DEFAULT,     
             BP_TOOL.RESET,       
@@ -1120,6 +1122,8 @@ class Bin_API(Protocol):
         rval = self.send_command_to_shouter(BP_TOOL.ARM)
         if rval != BP_TOOL.ARM:
             raise Firmware_State_Exception("State:" + self.get_state() + str(self.get_faults_latched()))
+    def cmd_eeprom_write(self, timeout=0):
+        self.send_command_to_shouter(BP_TOOL.EEPROM_WRITE)
     
     def cmd_pulse(self, timeout = 0):
         self.send_command_to_shouter(BP_TOOL.PULSE)

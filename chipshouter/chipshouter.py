@@ -886,6 +886,16 @@ class ChipSHOUTER(DisableNewAttr):
             self.com_api.cmd_reset()
         return
 
+    def eeprom_write(self):
+        """Write settings to EEPROM
+
+        Originally, everytime config was changed, it was
+        written to EEPROM, which could destroy EEPROM after a while.
+
+        Now only saves to EEPROM if this is called
+        """
+        self.com_api.cmd_eeprom_write()
+
     @property
     def boot_enable(self):
         return 0

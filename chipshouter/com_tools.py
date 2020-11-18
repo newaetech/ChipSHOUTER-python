@@ -1153,6 +1153,7 @@ class Bin_API(Protocol):
 
     def cmd_reset(self, timeout = 0):
         self.send_command_to_shouter(BP_TOOL.RESET)
+        time.sleep(5)
         return self.ready_for_commands()
 
     def get_board_id(self, timeout = 0):

@@ -1,6 +1,7 @@
 import sys
 import time
 from binascii import hexlify
+from zipfile import ZipFile
 
 class cs_buffer():
     """ Buffering for the packets received during downloading. """
@@ -133,7 +134,10 @@ class cs_dl():
             print(("Error opening " + my_file))
             return ''
         try:
-            data = f.read()
+            if my_file.endswith('.bin'):
+                data = f.read()
+            elif my_file.endswith('.fup'):
+                data = ZipFile(f).read('out/out.bin')
         finally:
             f.close()
         return data

@@ -67,6 +67,8 @@ from collections import OrderedDict
 from .com_tools import Bin_API
 from .com_tools import Reset_Exception
 from .com_tools import Max_Retry_Exception
+from .console.serial_interface import Serial_interface
+from .console.console import Console
 import time
 
 api_version = '0.0.0'
@@ -922,6 +924,28 @@ class ChipSHOUTER(DisableNewAttr):
     @property
     def board_id(self):
         return self.com_api.get_board_id()
+
+    def update_firmware(self, file, test_crc=False):
+        # TODO: unpack fup file
+        comport = self.com_api.comport
+        self.com_api.ctl_disconnect()
+        serial = Serial_interface(use_threads = False)
+        if serial.s_open(comport, timeout=0.01):
+            print("Connection successful")
+        else:
+            raise OSError("Unable to open serial port")
+        my_console = Console(serial, threads=False, sendfile=file)
+        my_console.download()
+        my_console.quit()
+        serial.s_close()
+        self.com_api.ctl_connect()
+        try:
+            time.sleep(5.5)
+            print(self.board_id)
+        except (Reset_Exception, Max_Retry_Exception) as e:
+            pass
+
+
 
     def _dict_repr(self):
         dict = OrderedDict()

@@ -124,6 +124,23 @@ class cs_dl():
             timeout_count = timeout_count + 1
         return b'\x00'
 
+    def board_id_get(self, my_file):
+        """ reads a file into a list
+        """
+        try:
+            f = open(my_file, "rb")
+        except:
+            print(("Error opening " + my_file))
+            return ''
+        try:
+            if my_file.endswith('.fup'):
+                data = ZipFile(f).read('out/board_id.txt')
+            else:
+                data = f.read()
+        finally:
+            f.close()
+        return data
+
     #---------------------------------------------------------------------------
     def file_get(self, my_file):
         """ reads a file into a list
@@ -134,10 +151,10 @@ class cs_dl():
             print(("Error opening " + my_file))
             return ''
         try:
-            if my_file.endswith('.bin'):
-                data = f.read()
-            elif my_file.endswith('.fup'):
+            if my_file.endswith('.fup'):
                 data = ZipFile(f).read('out/out.bin')
+            else:
+                data = f.read()
         finally:
             f.close()
         return data

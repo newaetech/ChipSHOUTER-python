@@ -166,6 +166,23 @@ class Console():
             dnld = cs_dl(self.serial.s_write, wait_callback = self.serial.s_read )
         self.serial.s_init(dnld.rx_serial)
 
+        board_id = None
+        if self.sendfile.endswith('.fup'):
+            print("Checking board ID...")
+            board_id = dnld.board_id_get(self.sendfile).split(b'\n')[0]
+            self.serial.s_write('g i\n')
+            x = bytes()
+            while x == bytes():
+                x += (self.serial.s_read())
+            if b'~' in x:
+                # device is stuck in bootloader mode
+                read_id = x.split(b'~')[0]
+            else:
+                read_id = x.split(b':')[0].split(b' ')[-1]
+            if board_id == read_id:
+                print("board ID good")
+            else:
+                raise ValueError("Expected board ID {}, but got {}".format(board_id, read_id))
         file_tx  = dnld.file_get(self.sendfile)
         filesize = dnld.get_file_size(file_tx)
 
@@ -179,6 +196,7 @@ class Console():
             if response == b'\x16':
                 got_ack = True
                 break
+
 
         if got_ack == False:
             raise ValueError('Downloading did not receive response from the shouter')

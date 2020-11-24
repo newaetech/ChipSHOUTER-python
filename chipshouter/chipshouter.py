@@ -826,13 +826,13 @@ class ChipSHOUTER(DisableNewAttr):
 
     @property
     def pat_wave(self):
-        """The wave used for the pattern trigger when pat_enable is 'True'.
+        r"""The wave used for the pattern trigger when pat_enable is 'True'.
 
         When reading the This will return the string up to 96 bits.
 
         If the length is more than 96 bits the string will append '... ( 4904 more )'
         >>> cs.pat_wave
-        '1111111111111111111111111111111111111111111111111111111111111111111111111111
+        '1111111111111111111111111111111111111111111111111111111111111111111111111111\
         11111111111111111111 ... ( 4904 more )'
          >>>
 
@@ -844,7 +844,8 @@ class ChipSHOUTER(DisableNewAttr):
          '11001'
          >>> cs.pat_wave = '1'*97
          >>> cs.pat_wave
-         '111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111 ... ( 1 more )'
+         '11111111111111111111111111111111111111111111111111111111111111111111111111111\
+         1111111111111111111 ... ( 1 more )'
          >>> cs.get_pat_wave()
          '1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111'
          >>>

@@ -64,12 +64,16 @@
 
 '''
 from collections import OrderedDict
+import re
+import logging
 from .com_tools import Bin_API
 from .com_tools import Reset_Exception
 from .com_tools import Max_Retry_Exception
 from .console.serial_interface import Serial_interface
 from .console.console import Console
 import time
+
+firmware_version = '1.9.0'
 
 api_version = '0.0.0'
 
@@ -294,6 +298,7 @@ class ChipSHOUTER(DisableNewAttr):
         self._voltage = VoltageSettings(self.com_api)
 
         self.disable_newattr()
+        self._check_fw_version()
 
     def status(self):
         """ This will indicate the status of the connection to the ChipSHOUTER.
@@ -402,7 +407,7 @@ class ChipSHOUTER(DisableNewAttr):
 
     @property
     def pulse(self):
-        """ Sets parameters for the pulse generator and causes the pulse
+        r""" Sets parameters for the pulse generator and causes the pulse
         to be triggered.
         
         :param pulse: (bool): When set to True causes a pulse to occur.
@@ -541,12 +546,20 @@ class ChipSHOUTER(DisableNewAttr):
     @property
     def trigger_safe(self):
         """
-        This will let you know if it is safe to trigger. 
-        If this is read and the system is safe it will allow triggering for 5 seconds
-        without checking the temperature. External triggers without calling this first
-        are not guaranteed to be successful. The unit could have a fault and abort triggering. 
+        Informs the ChipShouter that it is safe to read sensors.
 
-        :Returns (bool): - True to indicat that it is safe to trigger. 
+        Typically, the ChipShouter will read a temperature sensors
+        every few hundred ms. This can fail during a discharge 
+        event. Calling trigger_safe while the ChipShouter is armed
+        will do an immediate sensor read, then disable temperature
+        sensor reads. This must be called periodically, determined
+        by absent_temp, to read the temperature sensor. If absent_temp
+        elapses without a temperature read, the ChipShouter will fault.
+
+        This manual temperature read mode will be disabled upon
+        disarming the scope.
+
+        :Returns (bool): - The sensors have been read and trigger_safe is enabled
                          - False if the system is not armed or in fault.
                          
         """
@@ -655,6 +668,16 @@ class ChipSHOUTER(DisableNewAttr):
         :Returns (string): The string id of the ChipSHOUTER.
         """
         return self.com_api.get_id()
+
+    def _check_fw_version(self):
+        cs_id = self.id
+        cs_ver = re.search(r"[0-9]\.[0-9]\.[0-9]", cs_id).group(0)
+        if cs_ver < firmware_version:
+            logging.warning("-------------------------------------------------------")
+            logging.warning("New firmware update available (cur: {}) (new: {})".format(cs_ver, firmware_version))
+            logging.warning("Please contact support@newae.com for updated firmware")
+            logging.warning("-------------------------------------------------------")
+
 
     @property
     def arm_timeout(self):
@@ -772,7 +795,8 @@ class ChipSHOUTER(DisableNewAttr):
 
     @property
     def absent_temp(self):
-        """Configure maximum time the temperature sensors can be skipped for.
+        """Configure maximum time the temperature sensors can be skipped for
+        during trigger_safe mode.
         The temperature sensors cannot be read during pulse events, and
         the ChipSHOUTER keeps a timer of how old the last temperature reading
         is.
@@ -808,7 +832,8 @@ class ChipSHOUTER(DisableNewAttr):
 
         If the length is more than 96 bits the string will append '... ( 4904 more )'
         >>> cs.pat_wave
-        '111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111 ... ( 4904 more )'
+        '1111111111111111111111111111111111111111111111111111111111111111111111111111
+        11111111111111111111 ... ( 4904 more )'
          >>>
 
         **NOTE**: To get pattern waves that are longer than 96 use the get_pat_wave function.

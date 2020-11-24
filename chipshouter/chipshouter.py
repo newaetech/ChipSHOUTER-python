@@ -832,10 +832,8 @@ class ChipSHOUTER(DisableNewAttr):
 
         If the length is more than 96 bits the string will append '... ( 4904 more )'
         >>> cs.pat_wave
-        '1111111111111111111111111111111111111111111111111111111111111111111111111111\
-        11111111111111111111 ... ( 4904 more )'
-         >>>
-
+        '11111111111111111111111111111111111111...111111111111111 ... ( 4904 more )'
+        >>>
         **NOTE**: To get pattern waves that are longer than 96 use the get_pat_wave function.
 
         example:
@@ -844,10 +842,9 @@ class ChipSHOUTER(DisableNewAttr):
          '11001'
          >>> cs.pat_wave = '1'*97
          >>> cs.pat_wave
-         '11111111111111111111111111111111111111111111111111111111111111111111111111111\
-         1111111111111111111 ... ( 1 more )'
+         '111111111111111111111111111111111111111...11111111111111111 ... ( 1 more )'
          >>> cs.get_pat_wave()
-         '1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111'
+         '111111111111111111111111111111111111111...11111111111111111'
          >>>
 
         **NOTE**: You **MUST** end the pattern with an inactive value,

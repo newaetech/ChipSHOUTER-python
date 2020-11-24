@@ -5,3 +5,4 @@ future ; python_version < '3'
 # Require six for a (Pylint compatible) way to have a
 # portable input()
 six
+sphinx>=2.0

@@ -50,7 +50,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'ChipSHOUTER'
-copyright = u'2017-2018, NewAE Technology Inc.'
+copyright = u'2017-2020, NewAE Technology Inc.'
 author = u'NewAE Technology Inc.'
 
 # The version info for the project you're documenting, acts as replacement for

@@ -1,11 +1,19 @@
 # .readthedocs.yml
 
-build:
-  image: latest
+version: 2
+
+sphinx:
+  builder: html
+  configuration: docs/conf.py
+  fail_on_warning: true
 
 requirements_file: requirements.txt
 
+build:
+  image: stable
+
 python:
-  version: 2.7
-  setup_py_install: false
-  pip_install: true
+  version: 3.6
+  install:
+    - method: setuptools
+      path: .

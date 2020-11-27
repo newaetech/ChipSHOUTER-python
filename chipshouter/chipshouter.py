@@ -948,8 +948,15 @@ class ChipSHOUTER(DisableNewAttr):
     def board_id(self):
         return self.com_api.get_board_id()
 
-    def update_firmware(self, file, test_crc=False):
-        # TODO: unpack fup file
+    def update_firmware(self, file):
+        """Updates the firmware of the connected ChipSHOUTER
+
+        Supports both .fup and .bin files. If a .fup file is used,
+        will verify that the firmware and ChipSHOUTER board IDs match.
+
+        Args:
+            file (str): Path to the firmware file
+        """
         comport = self.com_api.comport
         self.com_api.ctl_disconnect()
         serial = Serial_interface(use_threads = False)

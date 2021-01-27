@@ -74,15 +74,15 @@
         cs = ChipSHOUTER('COM4')
 
         def setup_device:
-            #Wait for boot in case this was a reboot
-            time.sleep(1.0)
-
             #Set any defaults you want
             cs.pulse.repeat = 1
 
             #Arm - add some delay for next stuff
             cs.armed = 1
             time.sleep(0.5)
+            
+            #Turn off sound if you want
+            #cs.mute = True
 
         while True:
             try:
@@ -91,6 +91,7 @@
                 cs.pulse = 1
             except Reset_Exception:
                 print("Device rebooted!")
+                time.sleep(5) #Need to wait after reboot!
                 setup_device()
 
 '''

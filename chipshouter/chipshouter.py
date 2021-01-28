@@ -61,6 +61,38 @@
     >>> cs.pat_enable = 1 #Turn on special pattern trigger
     >>> cs.pulse = 1
     >>> cs.armed = False #Can use true/false or 1/0
+    
+    Scripting
+    ---------
+    
+    Scripting ChipSHOUTER is recommended to deal with the expected error conditions. In
+    particular, the ChipSHOUTER may reset during use due to the EMFI events. This can
+    be detected as shown here::
+    
+        from chipshouter import ChipSHOUTER
+        from chipshouter.com_tools import Reset_Exception
+        cs = ChipSHOUTER('COM4')
+
+        def setup_device:
+            #Set any defaults you want
+            cs.pulse.repeat = 1
+
+            #Arm - add some delay for next stuff
+            cs.armed = 1
+            time.sleep(0.5)
+            
+            #Turn off sound if you want
+            #cs.mute = True
+
+        while True:
+            try:
+                old = cs.voltage.set
+                cs.voltage = random.randint(200, 500)
+                cs.pulse = 1
+            except Reset_Exception:
+                print("Device rebooted!")
+                time.sleep(5) #Need to wait after reboot!
+                setup_device()
 
 '''
 from collections import OrderedDict

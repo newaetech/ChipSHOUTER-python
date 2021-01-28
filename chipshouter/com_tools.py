@@ -136,7 +136,7 @@ class Connection(object):
 
             # End logging 
             if Connection.START_UP_STRING in data:
-                raise Reset_Exception('Shouter has reset') 
+                raise Reset_Exception('ChipSHOUTER unit has reset - wait 5 seconds then reinitialize.') 
 
             if start < 0 or end < 0 or end < start:
                 b = bytearray()

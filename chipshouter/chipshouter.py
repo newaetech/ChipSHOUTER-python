@@ -1016,7 +1016,7 @@ class ChipSHOUTER(DisableNewAttr):
         dict['voltage']             = self.voltage._dict_repr()
         dict['pulse']               = self.pulse._dict_repr()
         dict['state']               = self.state
-        //dict['trigger_safe']        = self.trigger_safe
+        #dict['trigger_safe']        = self.trigger_safe
         dict['faults_current']      = self.faults_current
         dict['faults_latched']      = self.faults_latched
         dict['temperature_mosfet']  = self.temperature_mosfet

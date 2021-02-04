@@ -980,7 +980,7 @@ class ChipSHOUTER(DisableNewAttr):
     def board_id(self):
         return self.com_api.get_board_id()
 
-    def update_firmware(self, file):
+    def update_firmware(self, file, comport=None):
         """Updates the firmware of the connected ChipSHOUTER
 
         Supports both .fup and .bin files. If a .fup file is used,
@@ -988,9 +988,14 @@ class ChipSHOUTER(DisableNewAttr):
 
         Args:
             file (str): Path to the firmware file
+            comport (str): Optional if using function stand-alone, specify comport
         """
-        comport = self.com_api.comport
-        self.com_api.ctl_disconnect()
+        if comport is None:
+            apid = True
+            comport = self.com_api.comport
+            self.com_api.ctl_disconnect()
+        else:
+            apid = False
         serial = Serial_interface(use_threads = False)
         if serial.s_open(comport, timeout=0.01):
             print("Connection successful")
@@ -1000,7 +1005,8 @@ class ChipSHOUTER(DisableNewAttr):
         my_console.download()
         my_console.quit()
         serial.s_close()
-        self.com_api.ctl_connect()
+        if apid:
+            self.com_api.ctl_connect()
         try:
             time.sleep(5.5)
             print(self.board_id)

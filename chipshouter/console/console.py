@@ -180,11 +180,14 @@ class Console():
             else:
                 read_id = x.split(b':')[0].split(b' ')[-1]
             if board_id == read_id:
-                print("board ID good")
+                print("Board ID matches file.")
             else:
                 raise ValueError("Expected board ID {}, but got {}".format(board_id, read_id))
         file_tx  = dnld.file_get(self.sendfile)
         filesize = dnld.get_file_size(file_tx)
+
+        print('Attempting reset - you may need to power cycle ChipSHOUTER NOW with some versions.')
+        print('You will hear ChipSHOUTER reset, but sometimes you need power cycle to allow update.')
 
         got_ack = False
         for x in range(2):
@@ -192,7 +195,7 @@ class Console():
             self.serial.s_write('s bb 0\n')
             print('Sending reset for download .... [' + str(x) + ']')
             self.serial.s_write('reset\n')
-            response = dnld.wait_for_ack(4)
+            response = dnld.wait_for_ack(10)
             if response == b'\x16':
                 got_ack = True
                 break

@@ -10,3 +10,7 @@ See the latest automatically built documentation at [https://chipshouter.readthe
 ## Disclaimers
 
 Specifications are subject to change without notice. All product names are trademarks of their respective companies. ChipSHOUTER is a registered trademark of NewAE Technology Inc.
+
+## Current FW Version
+
+**2.02**

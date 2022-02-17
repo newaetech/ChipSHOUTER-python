@@ -105,7 +105,7 @@ from .console.serial_interface import Serial_interface
 from .console.console import Console
 import time
 
-firmware_version = '1.9.0'
+firmware_version = '2.0.2'
 
 api_version = '0.0.0'
 

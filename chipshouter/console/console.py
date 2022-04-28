@@ -193,6 +193,7 @@ class Console():
         for x in range(2):
             # Reset the board
             self.serial.s_write('s bb 0\n')
+            self.serial.s_write('write_nvm\n')
             print('Sending reset for download .... [' + str(x) + ']')
             self.serial.s_write('reset\n')
             response = dnld.wait_for_ack(10)
